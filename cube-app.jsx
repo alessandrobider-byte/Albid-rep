@@ -4005,6 +4005,98 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
       </div>
 
       <div style={S.box}>
+        <div style={S.boxTitle}>Type distribution</div>
+        {(() => {
+          const [typeMode, setTypeMode] = React.useState("split");
+
+          const cols = [
+            ...COLOR_KEYS.map(k => ({
+              key: k,
+              header: <ManaIcon c={k} size={15} />,
+              match: c => (c.colors||[]).length === 1 && (c.colors||[])[0] === k,
+            })),
+            {
+              key: "Guilds",
+              header: <span style={{fontSize:"10px",color:"#aaa",letterSpacing:"0.06em"}}>Guild</span>,
+              match: c => (c.colors||[]).length === 2,
+            },
+            ...(colorlessSlots > 0 ? [{
+              key: "Colorless",
+              header: <span style={{fontSize:"10px",color:"#666"}}>Clr</span>,
+              match: c => (c.tags?.guild||"").toLowerCase() === "colorless",
+            }] : []),
+            ...(wildcardsSlots > 0 ? [{
+              key: "Wildcards",
+              header: <span style={{fontSize:"10px",color:"#666"}}>Wld</span>,
+              match: c => (c.tags?.guild||"").toLowerCase() === "wildcards",
+            }] : []),
+          ];
+
+          const isLand       = c => (c.type_line||"").toLowerCase().includes("land");
+          const isCreature   = c => (c.type_line||"").toLowerCase().includes("creature");
+          const isNonCreature= c => !isCreature(c) && !isLand(c);
+
+          const allTypeRows = [
+            { label:"Creature",       match: c => isCreature(c) },
+            { label:"Instant",        match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("instant") },
+            { label:"Sorcery",        match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("sorcery") },
+            { label:"Enchantment",    match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("enchantment") },
+            { label:"Artifact",       match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("artifact") },
+            { label:"Planeswalker",   match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("planeswalker") },
+            { label:"Battle",         match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("battle") },
+            { label:"Land",           match: c => isLand(c) },
+          ].filter(r => cards.some(r.match));
+
+          const splitRows = [
+            { label:"Creature",       match: isCreature },
+            { label:"Non-Creature",   match: isNonCreature },
+          ];
+
+          const rows = typeMode === "all" ? allTypeRows : splitRows;
+
+          return (
+            <div>
+              <div style={{display:"flex", gap:"8px", marginBottom:"16px"}}>
+                {[["split","Creature vs Non-Creature"],["all","All Types"]].map(([m,label]) => (
+                  <div key={m} onClick={() => setTypeMode(m)} style={{
+                    padding:"4px 12px", fontSize:"11px", letterSpacing:"0.08em", textTransform:"uppercase",
+                    cursor:"pointer", borderRadius:"4px", border:"1px solid",
+                    borderColor: typeMode===m ? "#c8a000" : "#333",
+                    color: typeMode===m ? "#c8a000" : "#aaa",
+                    backgroundColor: typeMode===m ? "rgba(200,160,0,0.08)" : "transparent",
+                  }}>{label}</div>
+                ))}
+              </div>
+              <div style={{display:"flex", alignItems:"center", marginBottom:"4px", paddingBottom:"6px", borderBottom:"1px solid #333"}}>
+                <div style={{flex:1}}></div>
+                {cols.map(col => (
+                  <div key={col.key} style={{width:"44px", display:"flex", justifyContent:"center"}}>{col.header}</div>
+                ))}
+                <div style={{width:"52px", textAlign:"right", fontSize:"10px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.08em", paddingRight:"4px"}}>Total</div>
+              </div>
+              {rows.map(({ label, match }) => {
+                const matching = cards.filter(match);
+                return (
+                  <div key={label} style={{display:"flex", alignItems:"center", padding:"8px 0", borderBottom:"1px solid #1a1a1a"}}>
+                    <div style={{flex:1, fontSize:"12px", color:"#ccc"}}>{label}</div>
+                    {cols.map(col => {
+                      const cnt = matching.filter(col.match).length;
+                      return (
+                        <div key={col.key} style={{width:"44px", textAlign:"center", fontSize:"12px", color: cnt>0 ? "#aaa" : "#333"}}>
+                          {cnt || "—"}
+                        </div>
+                      );
+                    })}
+                    <div style={{width:"52px", textAlign:"right", fontSize:"13px", color:"#fff", fontWeight:"700", paddingRight:"4px"}}>{matching.length}</div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </div>
+
+      <div style={S.box}>
         <div style={S.boxTitle}>Mana curve</div>
         <ManaCurveBar cards={cards} />
       </div>
