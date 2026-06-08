@@ -4011,80 +4011,69 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
 
       <div style={S.box}>
         <div style={S.boxTitle}>Core utility — card advantage &amp; removal</div>
-        {/* Column headers */}
-        <div style={{ display:"flex", gap:"0", marginBottom:"4px", paddingBottom:"6px", borderBottom:"1px solid #333" }}>
-          <div style={{ flex:1 }}></div>
-          {COLOR_KEYS.map(k => (
-            <div key={k} style={{ width:"40px", display:"flex", justifyContent:"center" }}>
-              <ManaIcon c={k} size={16} />
-            </div>
-          ))}
-          <div style={{ width:"52px", textAlign:"right", fontSize:"10px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.08em", paddingRight:"4px" }}>Total</div>
-        </div>
-        {/* Cube-wide rows */}
-        {[
-          { label:"Card Advantage", uc: cardAdvCards, color:"#4a90d9" },
-          { label:"Removal",        uc: removalCards, color:"#d94a4a" },
-        ].map(({ label, uc, color }) => {
-          const byColor = COLOR_KEYS.map(k => uc.filter(c => (c.colors||[]).includes(k)).length);
+        {(() => {
+          const cols = [
+            ...COLOR_KEYS.map(k => ({
+              key: k,
+              header: <ManaIcon c={k} size={15} />,
+              match: c => (c.colors||[]).length === 1 && (c.colors||[])[0] === k,
+            })),
+            {
+              key: "Guilds",
+              header: <span style={{fontSize:"10px",color:"#aaa",letterSpacing:"0.06em"}}>Guild</span>,
+              match: c => (c.colors||[]).length === 2,
+            },
+            ...(colorlessSlots > 0 ? [{
+              key: "Colorless",
+              header: <span style={{fontSize:"10px",color:"#666"}}>Clr</span>,
+              match: c => (c.tags?.guild||"").toLowerCase() === "colorless",
+            }] : []),
+            ...(wildcardsSlots > 0 ? [{
+              key: "Wildcards",
+              header: <span style={{fontSize:"10px",color:"#666"}}>Wld</span>,
+              match: c => (c.tags?.guild||"").toLowerCase() === "wildcards",
+            }] : []),
+          ];
+
+          const rows = [
+            { label:"Card Advantage", subs: cardAdvSubs, color:"#4a90d9" },
+            { label:"Removal",        subs: removalSubs, color:"#d94a4a" },
+          ];
+
           return (
-            <div key={label} style={{ display:"flex", alignItems:"center", gap:"0", padding:"8px 0", borderBottom:"1px solid #1a1a1a" }}>
-              <div style={{ flex:1, fontSize:"12px", color:"#ccc" }}>{label}</div>
-              {byColor.map((cnt, i) => (
-                <div key={i} style={{ width:"40px", textAlign:"center", fontSize:"12px", color: cnt>0 ? COLOR_HEX[COLOR_KEYS[i]] : "#333" }}>{cnt || "—"}</div>
-              ))}
-              <div style={{ width:"52px", textAlign:"right", fontSize:"13px", color, fontWeight:"700", paddingRight:"4px" }}>{uc.length}</div>
+            <div>
+              <div style={{display:"flex", alignItems:"center", marginBottom:"4px", paddingBottom:"6px", borderBottom:"1px solid #333"}}>
+                <div style={{flex:1}}></div>
+                {cols.map(col => (
+                  <div key={col.key} style={{width:"48px", display:"flex", justifyContent:"center"}}>{col.header}</div>
+                ))}
+                <div style={{width:"52px", textAlign:"right", fontSize:"10px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.08em", paddingRight:"4px"}}>Total</div>
+              </div>
+              {rows.map(({ label, subs, color }) => {
+                const subsLC   = subs.map(s => s.toLowerCase());
+                const matching = cards.filter(c => (c.tags?.utility||[]).some(u => subsLC.includes(u.toLowerCase())));
+                return (
+                  <div key={label} style={{display:"flex", alignItems:"center", padding:"8px 0", borderBottom:"1px solid #1a1a1a"}}>
+                    <div style={{flex:1, fontSize:"12px", color:"#ccc"}}>{label}</div>
+                    {cols.map(col => {
+                      const cnt = matching.filter(col.match).length;
+                      return (
+                        <div key={col.key} style={{width:"48px", textAlign:"center", fontSize:"12px", color: cnt>0 ? color : "#333"}}>
+                          {cnt || "—"}
+                        </div>
+                      );
+                    })}
+                    <div style={{width:"52px", textAlign:"right", fontSize:"13px", color, fontWeight:"700", paddingRight:"4px"}}>{matching.length}</div>
+                  </div>
+                );
+              })}
             </div>
           );
-        })}
-        {/* Separator */}
-        <div style={{ fontSize:"10px", color:"#444", textTransform:"uppercase", letterSpacing:"0.08em", padding:"12px 0 6px" }}>By guild</div>
-        {/* Guild rows */}
-        {[
-          ...GUILDS_LIST.map(({ name, colors }) => {
-            const gc = cards.filter(c => c.tags?.guild === name);
-            return {
-              label: name, colors,
-              cardAdv: gc.filter(c => (c.tags?.utility||[]).some(u => cardAdvSubs.includes(u))).length,
-              removal: gc.filter(c => (c.tags?.utility||[]).some(u => removalSubs.includes(u))).length,
-            };
-          }),
-          ...(colorlessSlots > 0 ? [{
-            label: "Colorless", colors: null,
-            cardAdv: cards.filter(c => c.tags?.guild === "Colorless" && (c.tags?.utility||[]).some(u => cardAdvSubs.includes(u))).length,
-            removal: cards.filter(c => c.tags?.guild === "Colorless" && (c.tags?.utility||[]).some(u => removalSubs.includes(u))).length,
-          }] : []),
-          ...(wildcardsSlots > 0 ? [{
-            label: "Wildcards", colors: null,
-            cardAdv: cards.filter(c => c.tags?.guild === "Wildcards" && (c.tags?.utility||[]).some(u => cardAdvSubs.includes(u))).length,
-            removal: cards.filter(c => c.tags?.guild === "Wildcards" && (c.tags?.utility||[]).some(u => removalSubs.includes(u))).length,
-          }] : []),
-        ].map(({ label, colors, cardAdv, removal }) => (
-          <div key={label} style={{ display:"flex", alignItems:"center", gap:"0", padding:"7px 0", borderBottom:"1px solid #1a1a1a" }}>
-            <div style={{ flex:1, display:"flex", alignItems:"center", gap:"5px" }}>
-              {colors
-                ? colors.split("").map(c => <ManaIcon key={c} c={c} size={13} />)
-                : <span style={{ fontSize:"11px", color:"#555" }}>◇</span>
-              }
-              <span style={{ fontSize:"11px", color:"#555" }}>{label}</span>
-            </div>
-            <div style={{ width:"40px", textAlign:"center", fontSize:"12px", color: cardAdv>0 ? "#4a90d9" : "#333" }}>{cardAdv || "—"}</div>
-            <div style={{ width:"40px", textAlign:"center", fontSize:"12px", color: removal>0 ? "#d94a4a" : "#333" }}>{removal || "—"}</div>
-            <div style={{ width:"12px" }}></div>
-            <div style={{ width:"52px", textAlign:"right", fontSize:"12px", color:"#aaa", paddingRight:"4px" }}>{cardAdv+removal || "—"}</div>
-          </div>
-        ))}
+        })()}
       </div>
 
       <div style={S.box}>
-        <div style={S.boxTitle}>Archetype coverage — support per guild</div>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
-          {guildCoverage.map(({ name, colors, count }) => {
-            const target      = MAIN_ARCH_PER_GUILD[db.size] || 2;
-            const statusColor = count === 0 ? "#333" : count < target ? "#c8a000" : "#4a9d5a";
-            return (
-              <div key={name} style={{ backgroundColor:"#0d0d0d", border:"1px solid #222", borderRadius:"4px", padding:"12px 16px", minWidth:"140px", flex:"1" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:"4px", marginBottom:"8px" }}>
+        <div style={S.boxTitle}>Archetype coverage — support per guild</div>", alignItems:"center", gap:"4px", marginBottom:"8px" }}>
                   {colors.split("").map(c => <ManaIcon key={c} c={c} size={14} />)}
                   <span style={{ fontSize:"11px", color:"#aaa", marginLeft:"4px" }}>{name}</span>
                 </div>
