@@ -215,7 +215,7 @@ function HomePage({ db, setDB, cards }) {
         <div style={S.row}>
           <span style={S.label}>Cube Name</span>
         <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
-            <input style={S.input} value={name} placeholder="My Cube" onChange={e => handleNameChange(e.target.value)} />
+            <input style={S.input} value={name} placeholder="My Cube" onChange={e => handleNameChange(e.target.value)} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} />
             {name && <span onClick={() => handleNameChange("")}
               style={{ position: "absolute", right: "10px", cursor: "pointer", color: "#aaa", fontSize: "16px", lineHeight: 1 }}>×</span>}
           </div>
@@ -752,14 +752,7 @@ function TagBox({ label, selected, pool, onAdd, onRemove, onCreateTag, poolMeta 
   const filtered = pool
     .filter(t => t.toLowerCase().includes(search.toLowerCase()) && !selected.includes(t));
 
-  const exactMatch = pool.some(t => t.toLowerCase() === search.toLowerCase());
-  const canCreate  = search.trim() && !exactMatch;
-
   function handleAdd(tag) { onAdd(tag.toLowerCase()); setSearch(""); setOpen(false); }
-  function handleCreate() {
-    const tag = search.trim().toLowerCase();
-    onCreateTag(tag); onAdd(tag); setSearch(""); setOpen(false);
-  }
 
   return (
     <div ref={containerRef} style={{ flex: 1, minWidth: 0, position: "relative" }}>
@@ -781,9 +774,10 @@ function TagBox({ label, selected, pool, onAdd, onRemove, onCreateTag, poolMeta 
       {open && (
         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10, backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "4px", marginTop: "4px", overflow: "hidden" }}>
           <div style={{ position: "relative" }}>
-            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+            <input autoFocus value={search} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} onChange={e => setSearch(e.target.value)}
               onKeyDown={e => { if (e.key === "Escape") setOpen(false); }}
               placeholder="Search..."
+              autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
               style={{ ...S.input, width: "100%", borderRadius: 0, border: "none", borderBottom: "1px solid #333", boxSizing: "border-box", fontSize: "12px", padding: "8px 30px 8px 10px" }} />
             {search && (
               <span onClick={() => setSearch("")}
@@ -791,7 +785,7 @@ function TagBox({ label, selected, pool, onAdd, onRemove, onCreateTag, poolMeta 
             )}
           </div>
           <div style={{ maxHeight: "160px", overflowY: "auto" }}>
-            {filtered.length === 0 && !canCreate && (
+            {filtered.length === 0 && (
               <div style={{ padding: "8px 10px", fontSize: "12px", color: "#aaa" }}>No tags found.</div>
             )}
             {filtered.map(t => (
@@ -804,14 +798,7 @@ function TagBox({ label, selected, pool, onAdd, onRemove, onCreateTag, poolMeta 
               </div>
             ))}
           </div>
-          {canCreate && (
-            <div onClick={handleCreate}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = "#222"}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
-              style={{ padding: "8px 10px", fontSize: "12px", color: "#4a90d9", cursor: "pointer", borderTop: filtered.length ? "1px solid #222" : "none" }}>
-              + Create "{search.trim()}"
-            </div>
-          )}
+
         </div>
       )}
     </div>
@@ -1926,7 +1913,7 @@ function BulkTagBox({ label, existing, added, removed, pool, onToggleRemove, onA
       {open && (
         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10, backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "4px", marginTop: "4px", overflow: "hidden" }}>
           <div style={{ position: "relative" }}>
-            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+            <input autoFocus value={search} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} onChange={e => setSearch(e.target.value)}
               onKeyDown={e => { if (e.key === "Escape") setOpen(false); if (e.key === "Enter" && filtered.length === 1) handleAdd(filtered[0]); }}
               placeholder="Search..."
               style={{ ...S.input, width: "100%", borderRadius: 0, border: "none", borderBottom: "1px solid #333", boxSizing: "border-box", fontSize: "12px", padding: "8px 30px 8px 10px" }} />
@@ -2679,7 +2666,7 @@ function FilterDropdown({ selected, pool, onAdd, onRemove, poolMeta = {} }) {
       {open && (
         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20, backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "4px", marginTop: "4px", overflow: "hidden" }}>
           <div style={{ position: "relative" }}>
-            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+            <input autoFocus value={search} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} onChange={e => setSearch(e.target.value)}
               onKeyDown={e => e.key === "Escape" && setOpen(false)}
               placeholder="Search..."
               style={{ ...S.input, width: "100%", borderRadius: 0, border: "none", borderBottom: "1px solid #333", boxSizing: "border-box", fontSize: "12px", padding: "8px 30px 8px 10px" }} />
