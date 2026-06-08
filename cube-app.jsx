@@ -1158,48 +1158,89 @@ function StarRating({ stars, label, size = 16, showLabel = false }) {
 
 // ─── CARD PREVIEW ─────────────────────────────────────────────────────────────
 
+function CardFaceDetail({ face }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+        <span style={{ fontSize: "14px", fontWeight: "700", color: "#fff" }}>{face.name}</span>
+        {face.mana_cost && <ManaCost cost={face.mana_cost} />}
+      </div>
+      <div style={{ color: "#888", fontSize: "12px" }}>{face.type_line}</div>
+      {face.oracle_text && (
+        <div style={{ color: "#aaa", lineHeight: "1.6", whiteSpace: "pre-wrap", fontSize: "12px" }}>{face.oracle_text}</div>
+      )}
+      {face.power != null && (
+        <div style={{ color: "#aaa", fontSize: "12px" }}>{face.power} / {face.toughness}</div>
+      )}
+    </div>
+  );
+}
+
 function CardPreview({ card }) {
   const rarityColor = { common: "#aaa", uncommon: "#8fb4d9", rare: "#d4af37", mythic: "#e07840" };
+  const faces       = card.card_faces || null;
+  const isDFC       = faces && faces.length >= 2;
+
+  // Images: DFC may have per-face image_uris
+  const frontImg = isDFC
+    ? (faces[0].image_uris?.normal || card.image_uris?.normal || "")
+    : (card.image_uris?.normal || "");
+  const backImg  = isDFC ? (faces[1].image_uris?.normal || "") : "";
+
   return (
     <div style={{ display: "flex", gap: "20px", marginTop: "20px", flexWrap: "wrap" }}>
-      {card.image_uris.normal
-        ? <img src={card.image_uris.normal} alt={card.name}
-            style={{ width: "160px", borderRadius: "8px", flexShrink: 0, alignSelf: "flex-start" }} />
-        : <div style={{
-            width: "115px", height: "160px", borderRadius: "8px", flexShrink: 0,
-            background: card.colors.length
-              ? `linear-gradient(135deg, ${card.colors.map(c => MANA_STYLE[c]?.bg || "#333").join(", ")})`
-              : "#222",
-            border: "1px solid #333", display: "flex", alignItems: "center",
-            justifyContent: "center", flexDirection: "column", gap: "6px"
-          }}>
-            {card.colors.map(c => <ManaIcon key={c} c={c} size={28} />)}
-          </div>
-      }
-      <div style={{ flex: 1, minWidth: "180px", fontSize: "13px", color: "#ccc", display: "flex", flexDirection: "column", gap: "10px" }}>
-        <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff" }}>{card.name}</div>
-
-        <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
-          <ManaCost cost={card.mana_cost} />
-          <span style={{ color: "#aaa", fontSize: "12px" }}>· CMC {card.cmc}</span>
-        </div>
-
-        <div style={{ color: "#aaa" }}>{card.type_line}</div>
-
-        {card.subtypes.length > 0 && (
-          <div style={{ color: "#aaa", fontSize: "12px" }}>Subtypes: {card.subtypes.join(", ")}</div>
+      {/* Images */}
+      <div style={{ display: "flex", gap: "8px", flexShrink: 0, alignSelf: "flex-start" }}>
+        {frontImg
+          ? <img src={frontImg} alt={faces ? faces[0].name : card.name}
+              style={{ width: "150px", borderRadius: "8px" }} />
+          : <div style={{
+                width: "108px", height: "150px", borderRadius: "8px",
+                background: card.colors?.length
+                  ? `linear-gradient(135deg, ${card.colors.map(c => MANA_STYLE[c]?.bg || "#333").join(", ")})`
+                  : "#222",
+                border: "1px solid #333", display: "flex", alignItems: "center",
+                justifyContent: "center", flexDirection: "column", gap: "6px"
+              }}>
+              {(card.colors||[]).map(c => <ManaIcon key={c} c={c} size={28} />)}
+            </div>
+        }
+        {isDFC && backImg && (
+          <img src={backImg} alt={faces[1].name}
+            style={{ width: "150px", borderRadius: "8px" }} />
         )}
+      </div>
 
-        <div style={{ color: "#aaa", lineHeight: "1.6", whiteSpace: "pre-wrap", fontSize: "12px" }}>
-          {card.oracle_text}
-        </div>
-
-        {card.power !== null && (
-          <div style={{ color: "#aaa", fontSize: "12px" }}>{card.power} / {card.toughness}</div>
+      {/* Text detail */}
+      <div style={{ flex: 1, minWidth: "180px", fontSize: "13px", color: "#ccc", display: "flex", flexDirection: "column", gap: "12px" }}>
+        {isDFC ? (
+          <>
+            <CardFaceDetail face={faces[0]} />
+            <div style={{ borderTop: "1px solid #222", paddingTop: "12px" }}>
+              <CardFaceDetail face={faces[1]} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: "15px", fontWeight: "700", color: "#fff" }}>{card.name}</div>
+            <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
+              <ManaCost cost={card.mana_cost} />
+              <span style={{ color: "#aaa", fontSize: "12px" }}>· CMC {card.cmc}</span>
+            </div>
+            <div style={{ color: "#aaa" }}>{card.type_line}</div>
+            {card.subtypes?.length > 0 && (
+              <div style={{ color: "#aaa", fontSize: "12px" }}>Subtypes: {card.subtypes.join(", ")}</div>
+            )}
+            <div style={{ color: "#aaa", lineHeight: "1.6", whiteSpace: "pre-wrap", fontSize: "12px" }}>
+              {card.oracle_text}
+            </div>
+            {card.power !== null && (
+              <div style={{ color: "#aaa", fontSize: "12px" }}>{card.power} / {card.toughness}</div>
+            )}
+          </>
         )}
-
         <div style={{ color: rarityColor[card.rarity] || "#aaa", textTransform: "capitalize", fontSize: "12px" }}>
-          {card.rarity} · {card.set_name} ({card.set.toUpperCase()})
+          {card.rarity} · {card.set_name} ({(card.set||"").toUpperCase()}) · CMC {card.cmc}
         </div>
       </div>
     </div>
@@ -1282,7 +1323,8 @@ async function fetchCardFromAPI(cardName, setCode) {
           power:            data.power ?? null,
           toughness:        data.toughness ?? null,
           rarity:           data.rarity || "unknown",
-          image_uris:       { normal: data.image_normal || "" },
+          image_uris:       { normal: data.image_normal || data.card_faces?.[0]?.image_normal || "" },
+          card_faces:       data.card_faces || null,
           tags:             [],
         };
       }
@@ -1429,7 +1471,8 @@ function BulkImportTab({ onAddCard, onClose }) {
           power:            raw.power ?? null,
           toughness:        raw.toughness ?? null,
           rarity:           raw.rarity || "unknown",
-          image_uris:       { normal: raw.image_normal || "" },
+          image_uris:       { normal: raw.image_normal || raw.card_faces?.[0]?.image_normal || "" },
+          card_faces:       raw.card_faces || null,
           tags:             { main_archetype: [], main_archetype_support: [], tribal_archetype: [], tribal_archetype_support: [], utility: [], guild: "", ignore_tags: false },
         }};
       } else {
