@@ -1750,25 +1750,30 @@ function TagColumn({ label, tags }) {
 
 function CardHoverOverlay({ card, mouseX, mouseY }) {
   if (!card) return null;
-  const tags   = card.tags || {};
-  const faces  = card.card_faces || null;
-  const isDFC  = faces && faces.length >= 2;
-  const imgSrc = isDFC
+  const tags        = card.tags || {};
+  const faces       = card.card_faces || null;
+  const isDFC       = faces && faces.length >= 2;
+  const imgSrc      = isDFC
     ? (faces[0].image_uris?.normal || card.image_uris?.normal || "")
     : (card.image_uris?.normal || "");
+  const rarityColor = { common:"#aaa", uncommon:"#8fb4d9", rare:"#d4af37", mythic:"#e07840" };
 
-  const overlayW = 320;
-  const overlayH = 480;
+  const overlayW = 360;
   const margin   = 8;
 
-  // Position: 30px right of mouse, clamp to viewport
+  // Horizontal: 30px right of mouse, flip left if no space
   const vw   = window.innerWidth;
   const vh   = window.innerHeight;
   let left   = mouseX + 30;
   if (left + overlayW > vw - margin) left = mouseX - overlayW - 30;
-  let top    = mouseY - overlayH / 2;
+
+  // Vertical: centered on mouse, clamped to viewport
+  // We don't know exact height so use a generous estimate, then clamp with maxHeight + scroll
+  const estimatedH = 600;
+  let top = mouseY - estimatedH / 2;
   if (top < margin) top = margin;
-  if (top + overlayH > vh - margin) top = vh - overlayH - margin;
+  if (top + estimatedH > vh - margin) top = vh - estimatedH - margin;
+  if (top < margin) top = margin;
 
   const tagSection = (label, values) => (
     <div style={{marginBottom:"8px"}}>
@@ -1790,58 +1795,77 @@ function CardHoverOverlay({ card, mouseX, mouseY }) {
     <div style={{
       position:"fixed", left, top,
       width:`${overlayW}px`,
+      maxHeight:`${vh - margin * 2}px`,
+      overflowY:"auto",
       backgroundColor:"#111", border:"1px solid #333", borderRadius:"6px",
-      padding:"14px", zIndex:9999, pointerEvents:"none",
+      padding:"20px", zIndex:9999, pointerEvents:"none",
       boxShadow:"0 8px 32px rgba(0,0,0,0.9)",
     }}>
-      {/* Image full width */}
-      {imgSrc
-        ? <img src={imgSrc} alt={card.name} style={{width:"100%", borderRadius:"4px", marginBottom:"10px", display:"block"}} />
-        : <div style={{
-            width:"100%", height:"180px", borderRadius:"4px", marginBottom:"10px",
-            background:(card.colors||[]).length
-              ? `linear-gradient(135deg, ${card.colors.map(c => MANA_STYLE[c]?.bg||"#333").join(", ")})`
-              : "#222",
-            border:"1px solid #333", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px",
-          }}>
-            {(card.colors||[]).map(c => <ManaIcon key={c} c={c} size={24} />)}
-          </div>
-      }
-
-      {/* Name + mana cost */}
-      <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", marginBottom:"4px", flexWrap:"wrap"}}>
-        <div style={{fontSize:"13px", fontWeight:"700", color:"#fff"}}>{card.name}</div>
-        <ManaCost cost={card.mana_cost} size={13} />
-      </div>
-
-      {/* Type + CMC */}
-      <div style={{fontSize:"11px", color:"#888", marginBottom:"8px"}}>
-        {card.type_line}{card.cmc > 0 ? ` · CMC ${card.cmc}` : ""}
-      </div>
-
-      {/* Oracle text */}
-      {isDFC ? (
-        <div style={{marginBottom:"10px"}}>
-          {faces.map((f, i) => (
-            <div key={i} style={{marginBottom:"6px"}}>
-              {i > 0 && <div style={{borderTop:"1px solid #1a1a1a", margin:"6px 0"}}/>}
-              <div style={{fontSize:"10px", color:"#aaa", fontWeight:"600", marginBottom:"2px"}}>{f.name}</div>
-              <div style={{fontSize:"10px", color:"#666", lineHeight:"1.5", whiteSpace:"pre-wrap"}}>{f.oracle_text}</div>
-            </div>
-          ))}
+      {/* Layout: image left (150px) + text right — identical to edit card */}
+      <div style={{display:"flex", gap:"20px"}}>
+        <div style={{flexShrink:0}}>
+          {imgSrc
+            ? <img src={imgSrc} alt={card.name} style={{width:"150px", borderRadius:"8px", display:"block"}} />
+            : <div style={{
+                width:"108px", height:"150px", borderRadius:"8px",
+                background:(card.colors||[]).length
+                  ? `linear-gradient(135deg, ${card.colors.map(c => MANA_STYLE[c]?.bg||"#333").join(", ")})`
+                  : "#222",
+                border:"1px solid #333", display:"flex", alignItems:"center",
+                justifyContent:"center", flexDirection:"column", gap:"6px",
+              }}>
+                {(card.colors||[]).map(c => <ManaIcon key={c} c={c} size={28} />)}
+              </div>
+          }
         </div>
-      ) : card.oracle_text ? (
-        <div style={{fontSize:"10px", color:"#666", lineHeight:"1.5", whiteSpace:"pre-wrap", marginBottom:"10px"}}>{card.oracle_text}</div>
-      ) : null}
+
+        {/* Text — same styles as CardPreview */}
+        <div style={{flex:1, minWidth:0, fontSize:"13px", color:"#ccc", display:"flex", flexDirection:"column", gap:"12px"}}>
+          {isDFC ? (
+            <>
+              <div style={{fontSize:"14px", fontWeight:"700", color:"#fff"}}>{faces[0].name}</div>
+              <div style={{display:"flex", gap:"4px", alignItems:"center", flexWrap:"wrap"}}>
+                <ManaCost cost={faces[0].mana_cost} />
+              </div>
+              <div style={{color:"#aaa"}}>{faces[0].type_line}</div>
+              <div style={{color:"#aaa", lineHeight:"1.6", whiteSpace:"pre-wrap", fontSize:"12px"}}>{faces[0].oracle_text}</div>
+              <div style={{borderTop:"1px solid #222", paddingTop:"12px"}}>
+                <div style={{fontSize:"14px", fontWeight:"700", color:"#fff", marginBottom:"8px"}}>{faces[1].name}</div>
+                <div style={{color:"#aaa"}}>{faces[1].type_line}</div>
+                <div style={{color:"#aaa", lineHeight:"1.6", whiteSpace:"pre-wrap", fontSize:"12px"}}>{faces[1].oracle_text}</div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{fontSize:"15px", fontWeight:"700", color:"#fff"}}>{card.name}</div>
+              <div style={{display:"flex", gap:"4px", alignItems:"center", flexWrap:"wrap"}}>
+                <ManaCost cost={card.mana_cost} />
+                <span style={{color:"#aaa", fontSize:"12px"}}>· CMC {card.cmc}</span>
+              </div>
+              <div style={{color:"#aaa"}}>{card.type_line}</div>
+              {card.subtypes?.length > 0 && (
+                <div style={{color:"#aaa", fontSize:"12px"}}>Subtypes: {card.subtypes.join(", ")}</div>
+              )}
+              <div style={{color:"#aaa", lineHeight:"1.6", whiteSpace:"pre-wrap", fontSize:"12px"}}>{card.oracle_text}</div>
+              {card.power !== null && (
+                <div style={{color:"#aaa", fontSize:"12px"}}>{card.power} / {card.toughness}</div>
+              )}
+            </>
+          )}
+          <div style={{color: rarityColor[card.rarity]||"#aaa", textTransform:"capitalize", fontSize:"12px"}}>
+            {card.rarity} · {card.set_name} ({(card.set||"").toUpperCase()}) · CMC {card.cmc}
+          </div>
+        </div>
+      </div>
 
       {/* Tags */}
       {hasTags && (
-        <div style={{borderTop:"1px solid #1a1a1a", paddingTop:"10px"}}>
-          {tagSection("Main — Active",   tags.main_archetype)}
-          {tagSection("Main — Support",  tags.main_archetype_support)}
-          {tagSection("Tribal — Active", tags.tribal_archetype)}
-          {tagSection("Tribal — Support",tags.tribal_archetype_support)}
-          {tagSection("Utility",         tags.utility)}
+        <div style={{borderTop:"1px solid #1a1a1a", marginTop:"14px", paddingTop:"12px"}}>
+          {tagSection("Main — Active",    tags.main_archetype)}
+          {tagSection("Main — Support",   tags.main_archetype_support)}
+          {tagSection("Tribal — Active",  tags.tribal_archetype)}
+          {tagSection("Tribal — Support", tags.tribal_archetype_support)}
+          {tagSection("Utility",          tags.utility)}
         </div>
       )}
     </div>,
