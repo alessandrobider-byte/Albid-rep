@@ -3671,6 +3671,8 @@ const PREDEFINED_TRIBAL_ARCHETYPES = [
   { name:"Werewolves", desc:"Transform-based tribe that rewards not casting spells. Require a low spell count strategy to stay transformed.", ratio:"15%" },
   { name:"Wizards", desc:"Spellcasting tribe that rewards casting instants and sorceries. Synergize with Spellslinger and Prowess.", ratio:"15%" },
   { name:"Zombies", desc:"Recursive tribe that rewards graveyard strategies and sacrifice. Self-regenerating board presence.", ratio:"15%" },
+  { name:"Warriors", desc:"Aggressive tribe with combat-oriented abilities. Reward going wide and attacking each turn with payoffs that trigger on combat.", ratio:"15%" },
+  { name:"Samurai", desc:"Disciplined combat tribe with Bushido and Meifumado mechanics. Reward attacking and blocking with precision, synergizing with legendary and honor-based payoffs.", ratio:"15%" },
 ];
 
 function ArchetypeDetailModal({ archetype, onClose }) {
@@ -4024,26 +4026,29 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
           const isCreature   = c => (c.type_line||"").toLowerCase().includes("creature");
           const isNonCreature= c => !isCreature(c) && !isLand(c);
 
+          const isNonbasicLand = c => isLand(c) && !(c.type_line||"").toLowerCase().includes("basic");
+
           const allTypeRows = [
-            { label:"Creature",     match: c => isCreature(c) },
-            { label:"Instant",      match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("instant") },
-            { label:"Sorcery",      match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("sorcery") },
-            { label:"Enchantment",  match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("enchantment") },
-            { label:"Artifact",     match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("artifact") },
-            { label:"Planeswalker", match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("planeswalker") },
-            { label:"Battle",       match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("battle") },
-            { label:"Land",         match: c => isLand(c) },
+            { label:"Creature",       match: c => isCreature(c) },
+            { label:"Instant",        match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("instant") },
+            { label:"Sorcery",        match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("sorcery") },
+            { label:"Enchantment",    match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("enchantment") },
+            { label:"Artifact",       match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("artifact") },
+            { label:"Planeswalker",   match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("planeswalker") },
+            { label:"Battle",         match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("battle") },
+            { label:"Nonbasic Land",  match: c => isNonbasicLand(c) },
           ].filter(r => cards.some(r.match));
 
           const splitRows = [
-            { label:"Creature",     match: isCreature },
-            { label:"Non-Creature", match: isNonCreature },
+            { label:"Creature",       match: isCreature },
+            { label:"Non-Creature",   match: isNonCreature },
+            { label:"Nonbasic Land",  match: isNonbasicLand },
           ];
 
           const rows = typeMode === "all" ? allTypeRows : splitRows;
 
-          // Find max total for bar scaling
-          const maxTotal = Math.max(...rows.map(r => cards.filter(r.match).length), 1);
+          const grandTotal = cards.length;
+          const maxTotal   = Math.max(...rows.map(r => cards.filter(r.match).length), 1);
 
           return (
             <div>
@@ -4063,15 +4068,16 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
               {/* Stacked bars */}
               <div style={{display:"flex", flexDirection:"column", gap:"10px"}}>
                 {rows.map(({ label, match }) => {
-                  const pool  = cards.filter(match);
-                  const total = pool.length;
-                  const segs  = segments.map(s => ({ ...s, count: pool.filter(s.match).length })).filter(s => s.count > 0);
+                  const pool    = cards.filter(match);
+                  const total   = pool.length;
+                  const barW    = Math.round((total / maxTotal) * 100);
+                  const pct     = grandTotal > 0 ? Math.round((total / grandTotal) * 100) : 0;
+                  const segs    = segments.map(s => ({ ...s, count: pool.filter(s.match).length })).filter(s => s.count > 0);
                   return (
                     <div key={label} style={{display:"flex", alignItems:"center", gap:"12px"}}>
-                      <div style={{width:"100px", fontSize:"12px", color:"#aaa", textAlign:"right", flexShrink:0}}>{label}</div>
-                      <div style={{flex:1, position:"relative"}}>
-                        {/* Background track */}
-                        <div style={{height:"22px", backgroundColor:"#1a1a1a", borderRadius:"3px", overflow:"hidden", display:"flex"}}>
+                      <div style={{width:"110px", fontSize:"12px", color:"#aaa", textAlign:"right", flexShrink:0}}>{label}</div>
+                      <div style={{flex:1}}>
+                        <div style={{height:"22px", backgroundColor:"#1a1a1a", borderRadius:"3px", overflow:"hidden", display:"flex", width:`${barW}%`}}>
                           {segs.map(s => (
                             <div
                               key={s.key}
@@ -4080,24 +4086,23 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
                                 width:`${(s.count/total)*100}%`,
                                 backgroundColor: s.color,
                                 height:"100%",
-                                transition:"width 0.3s",
                                 position:"relative",
                               }}
                             >
-                              {/* Show count inside segment if wide enough */}
-                              {(s.count/total) > 0.06 && (
+                              {(s.count/total) > 0.07 && (
                                 <span style={{
                                   position:"absolute", top:"50%", left:"50%",
                                   transform:"translate(-50%,-50%)",
-                                  fontSize:"10px", color:"rgba(0,0,0,0.7)", fontWeight:"700",
-                                  pointerEvents:"none",
+                                  fontSize:"10px", color:"rgba(0,0,0,0.75)", fontWeight:"700",
+                                  pointerEvents:"none", whiteSpace:"nowrap",
                                 }}>{s.count}</span>
                               )}
                             </div>
                           ))}
                         </div>
                       </div>
-                      <div style={{width:"36px", textAlign:"right", fontSize:"13px", color:"#fff", fontWeight:"700", flexShrink:0}}>{total}</div>
+                      <div style={{width:"30px", textAlign:"right", fontSize:"13px", color:"#fff", fontWeight:"700", flexShrink:0}}>{total}</div>
+                      <div style={{width:"38px", textAlign:"right", fontSize:"11px", color:"#555", flexShrink:0}}>{pct}%</div>
                     </div>
                   );
                 })}
