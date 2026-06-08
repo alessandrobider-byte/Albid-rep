@@ -3885,7 +3885,7 @@ function ColorDistRow({ colorKey, target, actual }) {
 }
 
 function CubeAnalysisPage({ cards, db, tagDB }) {
-  const { size, colorless, monoPerColor, bicolorPerGuild, dualLands } = db;
+  const { size, colorless: colorlessSlots, wildcards: wildcardsSlots, monoPerColor, bicolorPerGuild, dualLands } = db;
 
   const monoTarget = Math.round(monoPerColor || 0);
   const colorDist  = COLOR_KEYS.map(k => ({
@@ -3894,32 +3894,61 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
     actual: cards.filter(c => (c.colors||[]).length === 1 && c.colors[0] === k).length,
   }));
 
-  const biTarget      = Math.round(bicolorPerGuild || 0);
-  const biActual      = cards.filter(c => (c.colors||[]).length === 2).length;
-  const biTargetTotal = biTarget * 10;
+  const biTarget        = Math.round(bicolorPerGuild || 0);
+  const biActual        = cards.filter(c => (c.colors||[]).length === 2).length;
+  const biTargetTotal   = biTarget * 10;
   const colorlessActual = cards.filter(c => (c.colors||[]).length === 0 && !(c.type_line||"").toLowerCase().includes("land")).length;
-  const landsActual   = cards.filter(c => (c.type_line||"").toLowerCase().includes("land")).length;
-  const filled        = cards.length;
+  const landsActual     = cards.filter(c => (c.type_line||"").toLowerCase().includes("land")).length;
+  const filled          = cards.length;
 
-  const cardAdvSubs = UTILITY_DATA.filter(d => d.core === 1 && d.cat === "Card Advantage").map(d => d.sub);
-  const removalSubs = UTILITY_DATA.filter(d => d.core === 1 && d.cat === "Removal").map(d => d.sub);
+  // All subs under Card Advantage and Removal (any, not just core)
+  const cardAdvSubs = UTILITY_DATA.filter(d => d.cat === "Card Advantage").map(d => d.sub);
+  const removalSubs = UTILITY_DATA.filter(d => d.cat === "Removal").map(d => d.sub);
   const cardAdvCards = cards.filter(c => (c.tags?.utility || []).some(u => cardAdvSubs.includes(u)));
   const removalCards = cards.filter(c => (c.tags?.utility || []).some(u => removalSubs.includes(u)));
 
+  // Archetype matching: case-insensitive
+  const hasArchTag = (card, field, name) => (card.tags?.[field] || []).some(t => t.toLowerCase() === name.toLowerCase());
+
   const mainActive   = PREDEFINED_MAIN_ARCHETYPES.filter(a =>
-    cards.some(c => (c.tags?.main_archetype||[]).includes(a.name) || (c.tags?.main_archetype_support||[]).includes(a.name))
+    cards.some(c => hasArchTag(c, "main_archetype", a.name) || hasArchTag(c, "main_archetype_support", a.name))
   );
   const tribalActive = PREDEFINED_TRIBAL_ARCHETYPES.filter(a =>
-    cards.some(c => (c.tags?.tribal_archetype||[]).includes(a.name) || (c.tags?.tribal_archetype_support||[]).includes(a.name))
+    cards.some(c => hasArchTag(c, "tribal_archetype", a.name) || hasArchTag(c, "tribal_archetype_support", a.name))
   );
 
   const guildCoverage = GUILDS_LIST.map(({ name, colors }) => {
     const gc    = cards.filter(c => c.tags?.guild === name);
     const count = PREDEFINED_MAIN_ARCHETYPES.filter(a =>
-      gc.some(c => (c.tags?.main_archetype_support||[]).includes(a.name))
+      gc.some(c => hasArchTag(c, "main_archetype_support", a.name))
     ).length;
     return { name, colors, count };
   });
+
+  // Utility by guild + specials
+  const guildRows = GUILDS_LIST.map(({ name, colors }) => {
+    const gc = cards.filter(c => c.tags?.guild === name);
+    return {
+      label: name,
+      colors,
+      isGuild: true,
+      cardAdv: gc.filter(c => (c.tags?.utility||[]).some(u => cardAdvSubs.includes(u))).length,
+      removal: gc.filter(c => (c.tags?.utility||[]).some(u => removalSubs.includes(u))).length,
+    };
+  });
+  const specialRows = [
+    ...(colorlessSlots > 0 ? [{
+      label: "Colorless", colors: null, isGuild: false,
+      cardAdv: cards.filter(c => c.tags?.guild === "Colorless" && (c.tags?.utility||[]).some(u => cardAdvSubs.includes(u))).length,
+      removal: cards.filter(c => c.tags?.guild === "Colorless" && (c.tags?.utility||[]).some(u => removalSubs.includes(u))).length,
+    }] : []),
+    ...(wildcardsSlots > 0 ? [{
+      label: "Wildcards", colors: null, isGuild: false,
+      cardAdv: cards.filter(c => c.tags?.guild === "Wildcards" && (c.tags?.utility||[]).some(u => cardAdvSubs.includes(u))).length,
+      removal: cards.filter(c => c.tags?.guild === "Wildcards" && (c.tags?.utility||[]).some(u => removalSubs.includes(u))).length,
+    }] : []),
+  ];
+  const allUtilRows = [...guildRows, ...specialRows];
 
   const statBox = (label, value, sub, color="#fff") => (
     <div style={{ backgroundColor:"#111", border:"1px solid #222", borderRadius:"4px", padding:"20px", flex:1, minWidth:"120px" }}>
@@ -3935,8 +3964,8 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
         {statBox("Cards in cube", filled, `of ${size} target`, filled === size ? "#4a9d5a" : filled > size ? "#d94a4a" : "#c8a000")}
         {statBox("Main archetypes", mainActive.length, `of ${PREDEFINED_MAIN_ARCHETYPES.length} defined`, "#c8a000")}
         {statBox("Tribal archetypes", tribalActive.length, `of ${PREDEFINED_TRIBAL_ARCHETYPES.length} defined`, "#4a90d9")}
-        {statBox("Card advantage", cardAdvCards.length, "core utility cards")}
-        {statBox("Removal", removalCards.length, "core utility cards", "#d94a4a")}
+        {statBox("Card advantage", cardAdvCards.length, "utility cards")}
+        {statBox("Removal", removalCards.length, "utility cards", "#d94a4a")}
       </div>
 
       <div style={S.box}>
@@ -3953,14 +3982,14 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
             {biActual} <span style={{ color:"#444" }}>/</span> {biTargetTotal}
           </div>
         </div>
-        {colorless > 0 && (
+        {colorlessSlots > 0 && (
           <div style={{ display:"flex", alignItems:"center", gap:"12px", padding:"7px 0", borderBottom:"1px solid #1a1a1a" }}>
             <span style={{ fontSize:"12px", color:"#aaa", width:"80px", flexShrink:0 }}>Colorless</span>
             <div style={{ flex:1, height:"6px", backgroundColor:"#1a1a1a", borderRadius:"3px", overflow:"hidden" }}>
-              <div style={{ width:`${Math.min(100,Math.round((colorlessActual/Math.max(colorless,1))*100))}%`, height:"100%", backgroundColor:"#666", borderRadius:"3px" }} />
+              <div style={{ width:`${Math.min(100,Math.round((colorlessActual/Math.max(colorlessSlots,1))*100))}%`, height:"100%", backgroundColor:"#666", borderRadius:"3px" }} />
             </div>
-            <div style={{ fontSize:"12px", color: colorlessActual===colorless?"#4a9d5a":colorlessActual>colorless?"#d94a4a":"#c8a000", minWidth:"80px", textAlign:"right" }}>
-              {colorlessActual} <span style={{ color:"#444" }}>/</span> {colorless}
+            <div style={{ fontSize:"12px", color: colorlessActual===colorlessSlots?"#4a9d5a":colorlessActual>colorlessSlots?"#d94a4a":"#c8a000", minWidth:"80px", textAlign:"right" }}>
+              {colorlessActual} <span style={{ color:"#444" }}>/</span> {colorlessSlots}
             </div>
           </div>
         )}
@@ -3981,31 +4010,35 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
       </div>
 
       <div style={S.box}>
-        <div style={S.boxTitle}>Core utility — card advantage &amp; removal</div>
-        <div style={{ display:"flex", gap:"0", marginBottom:"8px" }}>
-          <div style={{ flex:1 }}></div>
-          {COLOR_KEYS.map(k => (
-            <div key={k} style={{ width:"44px", display:"flex", justifyContent:"center" }}>
-              <ManaIcon c={k} size={16} />
-            </div>
-          ))}
-          <div style={{ width:"52px", textAlign:"right", fontSize:"10px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.08em", paddingRight:"4px" }}>Total</div>
+        <div style={S.boxTitle}>Core utility — card advantage &amp; removal per guild</div>
+        {/* Header */}
+        <div style={{ display:"flex", alignItems:"center", padding:"6px 0", borderBottom:"1px solid #333", marginBottom:"4px" }}>
+          <div style={{ flex:1, fontSize:"10px", color:"#555", textTransform:"uppercase", letterSpacing:"0.08em" }}>Guild</div>
+          <div style={{ width:"100px", textAlign:"center", fontSize:"10px", color:"#4a90d9", textTransform:"uppercase", letterSpacing:"0.08em" }}>Card Adv</div>
+          <div style={{ width:"100px", textAlign:"center", fontSize:"10px", color:"#d94a4a", textTransform:"uppercase", letterSpacing:"0.08em" }}>Removal</div>
+          <div style={{ width:"60px", textAlign:"right", fontSize:"10px", color:"#555", textTransform:"uppercase", letterSpacing:"0.08em" }}>Total</div>
         </div>
-        {[
-          { label:"Card Advantage", uc: cardAdvCards, color:"#4a90d9" },
-          { label:"Removal",        uc: removalCards,  color:"#d94a4a" },
-        ].map(({ label, uc, color }) => {
-          const byColor = COLOR_KEYS.map(k => uc.filter(c => (c.colors||[]).includes(k)).length);
-          return (
-            <div key={label} style={{ display:"flex", alignItems:"center", gap:"0", padding:"8px 0", borderBottom:"1px solid #1a1a1a" }}>
-              <div style={{ flex:1, fontSize:"12px", color:"#ccc" }}>{label}</div>
-              {byColor.map((cnt, i) => (
-                <div key={i} style={{ width:"44px", textAlign:"center", fontSize:"12px", color: cnt>0 ? COLOR_HEX[COLOR_KEYS[i]] : "#333" }}>{cnt || "—"}</div>
-              ))}
-              <div style={{ width:"52px", textAlign:"right", fontSize:"13px", color, fontWeight:"700", paddingRight:"4px" }}>{uc.length}</div>
+        {allUtilRows.map(({ label, colors, isGuild, cardAdv, removal }) => (
+          <div key={label} style={{ display:"flex", alignItems:"center", padding:"7px 0", borderBottom:"1px solid #1a1a1a" }}>
+            <div style={{ flex:1, display:"flex", alignItems:"center", gap:"6px" }}>
+              {isGuild && colors
+                ? colors.split("").map(c => <ManaIcon key={c} c={c} size={13} />)
+                : <span style={{ fontSize:"11px", color:"#555", fontStyle:"italic" }}>{label}</span>
+              }
+              {isGuild && <span style={{ fontSize:"11px", color:"#555" }}>{label}</span>}
             </div>
-          );
-        })}
+            <div style={{ width:"100px", textAlign:"center", fontSize:"13px", color: cardAdv > 0 ? "#4a90d9" : "#333", fontWeight: cardAdv > 0 ? "600" : "400" }}>{cardAdv || "—"}</div>
+            <div style={{ width:"100px", textAlign:"center", fontSize:"13px", color: removal > 0 ? "#d94a4a" : "#333", fontWeight: removal > 0 ? "600" : "400" }}>{removal || "—"}</div>
+            <div style={{ width:"60px", textAlign:"right", fontSize:"12px", color:"#aaa" }}>{cardAdv + removal || "—"}</div>
+          </div>
+        ))}
+        {/* Totals row */}
+        <div style={{ display:"flex", alignItems:"center", padding:"8px 0", borderTop:"1px solid #333", marginTop:"4px" }}>
+          <div style={{ flex:1, fontSize:"11px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.08em" }}>Total cube</div>
+          <div style={{ width:"100px", textAlign:"center", fontSize:"13px", color:"#4a90d9", fontWeight:"700" }}>{cardAdvCards.length}</div>
+          <div style={{ width:"100px", textAlign:"center", fontSize:"13px", color:"#d94a4a", fontWeight:"700" }}>{removalCards.length}</div>
+          <div style={{ width:"60px", textAlign:"right", fontSize:"13px", color:"#fff", fontWeight:"700" }}>{cardAdvCards.length + removalCards.length}</div>
+        </div>
       </div>
 
       <div style={S.box}>
