@@ -1356,18 +1356,65 @@ function BulkImportTab({ onAddCard, onClose }) {
     setDone(false);
     if (!parsed.length) return;
     setLoading(true);
-    const seen = new Set();
-    for (const line of parsed) {
-      const key = line.name.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
+
+    // Deduplicate names
+    const uniqueLines = parsed.filter((l, i, arr) => arr.findIndex(x => x.name.toLowerCase() === l.name.toLowerCase()) === i);
+
+    // Build identifiers for /cards/collection (max 75 per batch)
+    const identifiers = uniqueLines.map(l => l.setCode ? { name: l.name, set: l.setCode } : { name: l.name });
+    const BATCH = 75;
+    const allFound = {};
+    const allNotFound = new Set();
+
+    for (let i = 0; i < identifiers.length; i += BATCH) {
+      const batch = identifiers.slice(i, i + BATCH);
       try {
-        const card = await fetchCardFromAPI(line.name, line.setCode);
-        setResults(prev => ({ ...prev, [key]: { card } }));
+        const res  = await fetch("/api/scryfall-bulk", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ identifiers: batch }),
+        });
+        const data = await res.json();
+        (data.found || []).forEach(card => { allFound[card.name.toLowerCase()] = card; });
+        (data.not_found || []).forEach(name => allNotFound.add(name.toLowerCase()));
       } catch {
-        setResults(prev => ({ ...prev, [key]: { card: null } }));
+        batch.forEach(id => allNotFound.add((id.name || "").toLowerCase()));
       }
     }
+
+    // Build results map
+    const newResults = {};
+    uniqueLines.forEach(line => {
+      const key  = line.name.toLowerCase();
+      const raw  = allFound[key];
+      if (raw) {
+        const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        newResults[key] = { card: {
+          id:               localId,
+          scryfall_id:      raw.id || "",
+          name:             raw.name,
+          set:              raw.set || "",
+          set_name:         raw.set_name || "",
+          cube_set_override: null,
+          mana_cost:        raw.mana_cost || "",
+          colors:           Array.isArray(raw.colors) ? raw.colors : [],
+          cmc:              raw.cmc ?? 0,
+          type_line:        raw.type_line || "",
+          types:            raw.types || [],
+          subtypes:         raw.subtypes || [],
+          oracle_text:      raw.oracle_text || "",
+          power:            raw.power ?? null,
+          toughness:        raw.toughness ?? null,
+          rarity:           raw.rarity || "unknown",
+          image_uris:       { normal: raw.image_normal || "" },
+          tags:             { main_archetype: [], main_archetype_support: [], tribal_archetype: [], tribal_archetype_support: [], utility: [], guild: "", ignore_tags: false },
+        }};
+      } else {
+        newResults[key] = { card: null };
+      }
+    });
+
+    setResults(newResults);
     setLoading(false);
     setDone(true);
   }
