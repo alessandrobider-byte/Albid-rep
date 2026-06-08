@@ -4565,7 +4565,8 @@ function App() {
   }
 
   return (
-    <div style={S.app}>
+    <div style={{ backgroundColor:"#000", minHeight:"100vh" }}>
+    <div style={{ ...S.app, maxWidth:"1024px", margin:"0 auto", minHeight:"100vh", borderLeft:"1px solid #111", borderRight:"1px solid #111" }}>
       <nav style={{...S.nav, justifyContent:"flex-start"}}>
         {NAV_ITEMS.map(item => (
           <div key={item} style={S.navItem(active === item)} onClick={() => setActive(item)}>{item}</div>
@@ -4607,6 +4608,7 @@ function App() {
       {active === "Analyze" && analysisTab === "Guilds"      && <div style={S.page}><div style={{ color:"#555", fontSize:"13px" }}>Coming soon.</div></div>}
       {active === "Analyze" && analysisTab === "Archetypes"  && <div style={S.page}><div style={{ color:"#555", fontSize:"13px" }}>Coming soon.</div></div>}
       {active === "Reference" && <ReferencePage />}
+    </div>
     </div>
   );
 }
