@@ -2510,7 +2510,9 @@ function applyFilters(cards, f) {
   const isAnd = f.mode === "and";
   const match = (pool, values) => {
     if (pool.length === 0) return null;
-    return isAnd ? pool.every(p => values?.includes(p)) : pool.some(p => values?.includes(p));
+    const poolLC = pool.map(p => p.toLowerCase());
+    const valuesLC = (values || []).map(v => v.toLowerCase());
+    return isAnd ? poolLC.every(p => valuesLC.includes(p)) : poolLC.some(p => valuesLC.includes(p));
   };
 
   const colorCheck = card => {
@@ -2741,8 +2743,8 @@ function ColorFilter({ colors, colorless, onChange }) {
 function FilterModal({ cards, appliedFilters, onApply, onClose, db }) {
   const [f, setF] = useState({ ...appliedFilters });
 
-  const add    = (key, val) => setF(p => ({ ...p, [key]: [...p[key], val] }));
-  const remove = (key, val) => setF(p => ({ ...p, [key]: p[key].filter(x => x !== val) }));
+  const add    = (key, val) => setF(p => ({ ...p, [key]: [...p[key], val.toLowerCase()] }));
+  const remove = (key, val) => setF(p => ({ ...p, [key]: p[key].filter(x => x !== val.toLowerCase()) }));
 
   const typesPool    = derivePool(cards, c => c.types);
   const subtypesPool = derivePool(cards, c => c.subtypes);
