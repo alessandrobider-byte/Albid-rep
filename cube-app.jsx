@@ -1750,46 +1750,38 @@ function TagColumn({ label, tags }) {
 
 function CardHoverOverlay({ card, mouseX, mouseY }) {
   if (!card) return null;
-  const tags        = card.tags || {};
-  const faces       = card.card_faces || null;
-  const isDFC       = faces && faces.length >= 2;
-  const imgSrc      = isDFC
-    ? (faces[0].image_uris?.normal || card.image_uris?.normal || "")
-    : (card.image_uris?.normal || "");
-  const rarityColor = { common:"#aaa", uncommon:"#8fb4d9", rare:"#d4af37", mythic:"#e07840" };
+  const tags = card.tags || {};
 
-  const overlayW = 360;
+  const sectionTitle = { fontSize:"11px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:"10px", fontWeight:"700" };
+  const section      = { marginBottom:"20px" };
+
+  const TagReadOnly = ({ label, values }) => (
+    <div style={{ flex:1, minWidth:0 }}>
+      <div style={{ fontSize:"10px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"8px" }}>{label}</div>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:"4px", minHeight:"20px" }}>
+        {values && values.length > 0
+          ? values.map(t => (
+              <span key={t} style={{ display:"inline-flex", alignItems:"center", backgroundColor:"#1a1a1a", border:"1px solid #333", borderRadius:"4px", padding:"2px 8px", fontSize:"11px", color:"#aaa" }}>{t}</span>
+            ))
+          : <span style={{ fontSize:"12px", color:"#aaa" }}>none</span>
+        }
+      </div>
+    </div>
+  );
+
+  // Position: 30px right of mouse, flip left if no space, clamp vertically
+  const overlayW = 600;
   const margin   = 8;
-
-  // Horizontal: 30px right of mouse, flip left if no space
-  const vw   = window.innerWidth;
-  const vh   = window.innerHeight;
-  let left   = mouseX + 30;
+  const vw       = window.innerWidth;
+  const vh       = window.innerHeight;
+  let left       = mouseX + 30;
   if (left + overlayW > vw - margin) left = mouseX - overlayW - 30;
-
-  // Vertical: centered on mouse, clamped to viewport
-  // We don't know exact height so use a generous estimate, then clamp with maxHeight + scroll
-  const estimatedH = 600;
+  if (left < margin) left = margin;
+  const estimatedH = 700;
   let top = mouseY - estimatedH / 2;
   if (top < margin) top = margin;
   if (top + estimatedH > vh - margin) top = vh - estimatedH - margin;
   if (top < margin) top = margin;
-
-  const tagSection = (label, values) => (
-    <div style={{marginBottom:"8px"}}>
-      <div style={{fontSize:"9px", color:"#444", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"4px"}}>{label}</div>
-      {values && values.length > 0
-        ? <div style={{display:"flex", flexWrap:"wrap", gap:"3px"}}>
-            {values.map(t => (
-              <span key={t} style={{fontSize:"10px", color:"#666", backgroundColor:"#1a1a1a", border:"1px solid #222", borderRadius:"3px", padding:"2px 6px"}}>{t}</span>
-            ))}
-          </div>
-        : <span style={{fontSize:"10px", color:"#333"}}>—</span>
-      }
-    </div>
-  );
-
-  const hasTags = [tags.main_archetype, tags.main_archetype_support, tags.tribal_archetype, tags.tribal_archetype_support, tags.utility].some(t => t?.length > 0);
 
   return ReactDOM.createPortal(
     <div style={{
@@ -1797,81 +1789,48 @@ function CardHoverOverlay({ card, mouseX, mouseY }) {
       width:`${overlayW}px`,
       maxHeight:`${vh - margin * 2}px`,
       overflowY:"auto",
-      backgroundColor:"#111", border:"1px solid #333", borderRadius:"6px",
-      padding:"20px", zIndex:9999, pointerEvents:"none",
+      backgroundColor:"#111", border:"1px solid #222", borderRadius:"4px",
+      zIndex:9999, pointerEvents:"none",
       boxShadow:"0 8px 32px rgba(0,0,0,0.9)",
     }}>
-      {/* Layout: image left (150px) + text right — identical to edit card */}
-      <div style={{display:"flex", gap:"20px"}}>
-        <div style={{flexShrink:0}}>
-          {imgSrc
-            ? <img src={imgSrc} alt={card.name} style={{width:"150px", borderRadius:"8px", display:"block"}} />
-            : <div style={{
-                width:"108px", height:"150px", borderRadius:"8px",
-                background:(card.colors||[]).length
-                  ? `linear-gradient(135deg, ${card.colors.map(c => MANA_STYLE[c]?.bg||"#333").join(", ")})`
-                  : "#222",
-                border:"1px solid #333", display:"flex", alignItems:"center",
-                justifyContent:"center", flexDirection:"column", gap:"6px",
-              }}>
-                {(card.colors||[]).map(c => <ManaIcon key={c} c={c} size={28} />)}
-              </div>
+      {/* Body — identical padding to EditCardModal */}
+      <div style={{ padding:"20px 16px" }}>
+        <CardPreview card={card} />
+
+        {/* Tags readonly — same structure as CardTagging */}
+        <div style={{ marginTop:"24px", paddingTop:"20px", borderTop:"1px solid #1a1a1a" }}>
+          <div style={{ fontSize:"11px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"20px" }}>Tags</div>
+
+          {tags.ignore_tags
+            ? <div style={{ fontSize:"12px", color:"#555", fontStyle:"italic" }}>Tags ignored for this card.</div>
+            : <>
+                <div style={section}>
+                  <div style={sectionTitle}>Main Archetype</div>
+                  <div style={{ display:"flex", gap:"12px" }}>
+                    <TagReadOnly label="Active"  values={tags.main_archetype} />
+                    <TagReadOnly label="Support" values={tags.main_archetype_support} />
+                  </div>
+                </div>
+                <div style={section}>
+                  <div style={sectionTitle}>Tribal Archetype</div>
+                  <div style={{ display:"flex", gap:"12px" }}>
+                    <TagReadOnly label="Active"  values={tags.tribal_archetype} />
+                    <TagReadOnly label="Support" values={tags.tribal_archetype_support} />
+                  </div>
+                </div>
+                <div style={{ ...section, marginBottom:0 }}>
+                  <div style={sectionTitle}>Utility</div>
+                  <TagReadOnly label="" values={tags.utility} />
+                </div>
+              </>
           }
         </div>
-
-        {/* Text — same styles as CardPreview */}
-        <div style={{flex:1, minWidth:0, fontSize:"13px", color:"#ccc", display:"flex", flexDirection:"column", gap:"12px"}}>
-          {isDFC ? (
-            <>
-              <div style={{fontSize:"14px", fontWeight:"700", color:"#fff"}}>{faces[0].name}</div>
-              <div style={{display:"flex", gap:"4px", alignItems:"center", flexWrap:"wrap"}}>
-                <ManaCost cost={faces[0].mana_cost} />
-              </div>
-              <div style={{color:"#aaa"}}>{faces[0].type_line}</div>
-              <div style={{color:"#aaa", lineHeight:"1.6", whiteSpace:"pre-wrap", fontSize:"12px"}}>{faces[0].oracle_text}</div>
-              <div style={{borderTop:"1px solid #222", paddingTop:"12px"}}>
-                <div style={{fontSize:"14px", fontWeight:"700", color:"#fff", marginBottom:"8px"}}>{faces[1].name}</div>
-                <div style={{color:"#aaa"}}>{faces[1].type_line}</div>
-                <div style={{color:"#aaa", lineHeight:"1.6", whiteSpace:"pre-wrap", fontSize:"12px"}}>{faces[1].oracle_text}</div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div style={{fontSize:"15px", fontWeight:"700", color:"#fff"}}>{card.name}</div>
-              <div style={{display:"flex", gap:"4px", alignItems:"center", flexWrap:"wrap"}}>
-                <ManaCost cost={card.mana_cost} />
-                <span style={{color:"#aaa", fontSize:"12px"}}>· CMC {card.cmc}</span>
-              </div>
-              <div style={{color:"#aaa"}}>{card.type_line}</div>
-              {card.subtypes?.length > 0 && (
-                <div style={{color:"#aaa", fontSize:"12px"}}>Subtypes: {card.subtypes.join(", ")}</div>
-              )}
-              <div style={{color:"#aaa", lineHeight:"1.6", whiteSpace:"pre-wrap", fontSize:"12px"}}>{card.oracle_text}</div>
-              {card.power !== null && (
-                <div style={{color:"#aaa", fontSize:"12px"}}>{card.power} / {card.toughness}</div>
-              )}
-            </>
-          )}
-          <div style={{color: rarityColor[card.rarity]||"#aaa", textTransform:"capitalize", fontSize:"12px"}}>
-            {card.rarity} · {card.set_name} ({(card.set||"").toUpperCase()}) · CMC {card.cmc}
-          </div>
-        </div>
       </div>
-
-      {/* Tags */}
-      {hasTags && (
-        <div style={{borderTop:"1px solid #1a1a1a", marginTop:"14px", paddingTop:"12px"}}>
-          {tagSection("Main — Active",    tags.main_archetype)}
-          {tagSection("Main — Support",   tags.main_archetype_support)}
-          {tagSection("Tribal — Active",  tags.tribal_archetype)}
-          {tagSection("Tribal — Support", tags.tribal_archetype_support)}
-          {tagSection("Utility",          tags.utility)}
-        </div>
-      )}
     </div>,
     document.body
   );
 }
+
 
 // ─── CARD ITEM ────────────────────────────────────────────────────────────────
 
