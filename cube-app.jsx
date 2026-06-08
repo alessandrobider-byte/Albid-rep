@@ -4073,7 +4073,14 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
       </div>
 
       <div style={S.box}>
-        <div style={S.boxTitle}>Archetype coverage — support per guild</div>", alignItems:"center", gap:"4px", marginBottom:"8px" }}>
+        <div style={S.boxTitle}>Archetype coverage — support per guild</div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
+          {guildCoverage.map(({ name, colors, count }) => {
+            const target      = MAIN_ARCH_PER_GUILD[db.size] || 2;
+            const statusColor = count === 0 ? "#333" : count < target ? "#c8a000" : "#4a9d5a";
+            return (
+              <div key={name} style={{ backgroundColor:"#0d0d0d", border:"1px solid #222", borderRadius:"4px", padding:"12px 16px", minWidth:"140px", flex:"1" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:"4px", marginBottom:"8px" }}>
                   {colors.split("").map(c => <ManaIcon key={c} c={c} size={14} />)}
                   <span style={{ fontSize:"11px", color:"#aaa", marginLeft:"4px" }}>{name}</span>
                 </div>
