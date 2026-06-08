@@ -4010,35 +4010,70 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
       </div>
 
       <div style={S.box}>
-        <div style={S.boxTitle}>Core utility — card advantage &amp; removal per guild</div>
-        {/* Header */}
-        <div style={{ display:"flex", alignItems:"center", padding:"6px 0", borderBottom:"1px solid #333", marginBottom:"4px" }}>
-          <div style={{ flex:1, fontSize:"10px", color:"#555", textTransform:"uppercase", letterSpacing:"0.08em" }}>Guild</div>
-          <div style={{ width:"100px", textAlign:"center", fontSize:"10px", color:"#4a90d9", textTransform:"uppercase", letterSpacing:"0.08em" }}>Card Adv</div>
-          <div style={{ width:"100px", textAlign:"center", fontSize:"10px", color:"#d94a4a", textTransform:"uppercase", letterSpacing:"0.08em" }}>Removal</div>
-          <div style={{ width:"60px", textAlign:"right", fontSize:"10px", color:"#555", textTransform:"uppercase", letterSpacing:"0.08em" }}>Total</div>
-        </div>
-        {allUtilRows.map(({ label, colors, isGuild, cardAdv, removal }) => (
-          <div key={label} style={{ display:"flex", alignItems:"center", padding:"7px 0", borderBottom:"1px solid #1a1a1a" }}>
-            <div style={{ flex:1, display:"flex", alignItems:"center", gap:"6px" }}>
-              {isGuild && colors
-                ? colors.split("").map(c => <ManaIcon key={c} c={c} size={13} />)
-                : <span style={{ fontSize:"11px", color:"#555", fontStyle:"italic" }}>{label}</span>
-              }
-              {isGuild && <span style={{ fontSize:"11px", color:"#555" }}>{label}</span>}
+        <div style={S.boxTitle}>Core utility — card advantage &amp; removal</div>
+        {/* Column headers */}
+        <div style={{ display:"flex", gap:"0", marginBottom:"4px", paddingBottom:"6px", borderBottom:"1px solid #333" }}>
+          <div style={{ flex:1 }}></div>
+          {COLOR_KEYS.map(k => (
+            <div key={k} style={{ width:"40px", display:"flex", justifyContent:"center" }}>
+              <ManaIcon c={k} size={16} />
             </div>
-            <div style={{ width:"100px", textAlign:"center", fontSize:"13px", color: cardAdv > 0 ? "#4a90d9" : "#333", fontWeight: cardAdv > 0 ? "600" : "400" }}>{cardAdv || "—"}</div>
-            <div style={{ width:"100px", textAlign:"center", fontSize:"13px", color: removal > 0 ? "#d94a4a" : "#333", fontWeight: removal > 0 ? "600" : "400" }}>{removal || "—"}</div>
-            <div style={{ width:"60px", textAlign:"right", fontSize:"12px", color:"#aaa" }}>{cardAdv + removal || "—"}</div>
+          ))}
+          <div style={{ width:"52px", textAlign:"right", fontSize:"10px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.08em", paddingRight:"4px" }}>Total</div>
+        </div>
+        {/* Cube-wide rows */}
+        {[
+          { label:"Card Advantage", uc: cardAdvCards, color:"#4a90d9" },
+          { label:"Removal",        uc: removalCards, color:"#d94a4a" },
+        ].map(({ label, uc, color }) => {
+          const byColor = COLOR_KEYS.map(k => uc.filter(c => (c.colors||[]).includes(k)).length);
+          return (
+            <div key={label} style={{ display:"flex", alignItems:"center", gap:"0", padding:"8px 0", borderBottom:"1px solid #1a1a1a" }}>
+              <div style={{ flex:1, fontSize:"12px", color:"#ccc" }}>{label}</div>
+              {byColor.map((cnt, i) => (
+                <div key={i} style={{ width:"40px", textAlign:"center", fontSize:"12px", color: cnt>0 ? COLOR_HEX[COLOR_KEYS[i]] : "#333" }}>{cnt || "—"}</div>
+              ))}
+              <div style={{ width:"52px", textAlign:"right", fontSize:"13px", color, fontWeight:"700", paddingRight:"4px" }}>{uc.length}</div>
+            </div>
+          );
+        })}
+        {/* Separator */}
+        <div style={{ fontSize:"10px", color:"#444", textTransform:"uppercase", letterSpacing:"0.08em", padding:"12px 0 6px" }}>By guild</div>
+        {/* Guild rows */}
+        {[
+          ...GUILDS_LIST.map(({ name, colors }) => {
+            const gc = cards.filter(c => c.tags?.guild === name);
+            return {
+              label: name, colors,
+              cardAdv: gc.filter(c => (c.tags?.utility||[]).some(u => cardAdvSubs.includes(u))).length,
+              removal: gc.filter(c => (c.tags?.utility||[]).some(u => removalSubs.includes(u))).length,
+            };
+          }),
+          ...(colorlessSlots > 0 ? [{
+            label: "Colorless", colors: null,
+            cardAdv: cards.filter(c => c.tags?.guild === "Colorless" && (c.tags?.utility||[]).some(u => cardAdvSubs.includes(u))).length,
+            removal: cards.filter(c => c.tags?.guild === "Colorless" && (c.tags?.utility||[]).some(u => removalSubs.includes(u))).length,
+          }] : []),
+          ...(wildcardsSlots > 0 ? [{
+            label: "Wildcards", colors: null,
+            cardAdv: cards.filter(c => c.tags?.guild === "Wildcards" && (c.tags?.utility||[]).some(u => cardAdvSubs.includes(u))).length,
+            removal: cards.filter(c => c.tags?.guild === "Wildcards" && (c.tags?.utility||[]).some(u => removalSubs.includes(u))).length,
+          }] : []),
+        ].map(({ label, colors, cardAdv, removal }) => (
+          <div key={label} style={{ display:"flex", alignItems:"center", gap:"0", padding:"7px 0", borderBottom:"1px solid #1a1a1a" }}>
+            <div style={{ flex:1, display:"flex", alignItems:"center", gap:"5px" }}>
+              {colors
+                ? colors.split("").map(c => <ManaIcon key={c} c={c} size={13} />)
+                : <span style={{ fontSize:"11px", color:"#555" }}>◇</span>
+              }
+              <span style={{ fontSize:"11px", color:"#555" }}>{label}</span>
+            </div>
+            <div style={{ width:"40px", textAlign:"center", fontSize:"12px", color: cardAdv>0 ? "#4a90d9" : "#333" }}>{cardAdv || "—"}</div>
+            <div style={{ width:"40px", textAlign:"center", fontSize:"12px", color: removal>0 ? "#d94a4a" : "#333" }}>{removal || "—"}</div>
+            <div style={{ width:"12px" }}></div>
+            <div style={{ width:"52px", textAlign:"right", fontSize:"12px", color:"#aaa", paddingRight:"4px" }}>{cardAdv+removal || "—"}</div>
           </div>
         ))}
-        {/* Totals row */}
-        <div style={{ display:"flex", alignItems:"center", padding:"8px 0", borderTop:"1px solid #333", marginTop:"4px" }}>
-          <div style={{ flex:1, fontSize:"11px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.08em" }}>Total cube</div>
-          <div style={{ width:"100px", textAlign:"center", fontSize:"13px", color:"#4a90d9", fontWeight:"700" }}>{cardAdvCards.length}</div>
-          <div style={{ width:"100px", textAlign:"center", fontSize:"13px", color:"#d94a4a", fontWeight:"700" }}>{removalCards.length}</div>
-          <div style={{ width:"60px", textAlign:"right", fontSize:"13px", color:"#fff", fontWeight:"700" }}>{cardAdvCards.length + removalCards.length}</div>
-        </div>
       </div>
 
       <div style={S.box}>
