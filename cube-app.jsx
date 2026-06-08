@@ -1346,11 +1346,11 @@ function parseBulkList(text) {
         return "";
       }).trim();
 
-      // 4. Strip collector number at end: "290", "EMA-157", "42"
-      s = s.replace(/\s+[A-Z]{0,4}-?\d+\s*$/i, "").trim();
-
-      // 5. Strip any remaining trailing numbers
-      s = s.replace(/\s+\d+\s*$/, "").trim();
+      // 4. Strip collector number at end: "290", "EMA-157", "A25-82", "DD2-23", "42"
+      //    Format: optional letters+digits prefix, dash, digits (e.g. A25-82, DD2-23, EMA-157)
+      //    Or just digits (e.g. 290, 42)
+      s = s.replace(/\s+[A-Za-z0-9]{1,4}-\d+\s*$/i, "").trim();  // prefix-number (A25-82, EMA-157)
+      s = s.replace(/\s+\d+\s*$/, "").trim();                      // plain number (290, 42)
 
       // 6. Normalize split card names: keep full name e.g. "Fire // Ice"
       s = s.replace(/\s*\/\/\s*/g, " // ").trim();
