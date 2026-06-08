@@ -4009,27 +4009,15 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
         {(() => {
           const [typeMode, setTypeMode] = React.useState("split");
 
-          const cols = [
-            ...COLOR_KEYS.map(k => ({
-              key: k,
-              header: <ManaIcon c={k} size={15} />,
-              match: c => (c.colors||[]).length === 1 && (c.colors||[])[0] === k,
-            })),
-            {
-              key: "Guilds",
-              header: <span style={{fontSize:"10px",color:"#aaa",letterSpacing:"0.06em"}}>Guild</span>,
-              match: c => (c.colors||[]).length === 2,
-            },
-            ...(colorlessSlots > 0 ? [{
-              key: "Colorless",
-              header: <span style={{fontSize:"10px",color:"#666"}}>Clr</span>,
-              match: c => (c.tags?.guild||"").toLowerCase() === "colorless",
-            }] : []),
-            ...(wildcardsSlots > 0 ? [{
-              key: "Wildcards",
-              header: <span style={{fontSize:"10px",color:"#666"}}>Wld</span>,
-              match: c => (c.tags?.guild||"").toLowerCase() === "wildcards",
-            }] : []),
+          const segments = [
+            { key:"W",         label:"White",     color:"#c8b882", match: c => (c.colors||[]).length===1 && c.colors[0]==="W" },
+            { key:"U",         label:"Blue",      color:"#4a90d9", match: c => (c.colors||[]).length===1 && c.colors[0]==="U" },
+            { key:"B",         label:"Black",     color:"#8a7a9a", match: c => (c.colors||[]).length===1 && c.colors[0]==="B" },
+            { key:"R",         label:"Red",       color:"#d94a4a", match: c => (c.colors||[]).length===1 && c.colors[0]==="R" },
+            { key:"G",         label:"Green",     color:"#4a9d5a", match: c => (c.colors||[]).length===1 && c.colors[0]==="G" },
+            { key:"Guild",     label:"Guild",     color:"#7a5fa0", match: c => (c.colors||[]).length===2 },
+            ...(colorlessSlots > 0 ? [{ key:"Colorless", label:"Colorless", color:"#555", match: c => (c.tags?.guild||"").toLowerCase()==="colorless" }] : []),
+            ...(wildcardsSlots > 0 ? [{ key:"Wildcards", label:"Wildcards", color:"#3a6a7a", match: c => (c.tags?.guild||"").toLowerCase()==="wildcards" }] : []),
           ];
 
           const isLand       = c => (c.type_line||"").toLowerCase().includes("land");
@@ -4037,26 +4025,30 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
           const isNonCreature= c => !isCreature(c) && !isLand(c);
 
           const allTypeRows = [
-            { label:"Creature",       match: c => isCreature(c) },
-            { label:"Instant",        match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("instant") },
-            { label:"Sorcery",        match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("sorcery") },
-            { label:"Enchantment",    match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("enchantment") },
-            { label:"Artifact",       match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("artifact") },
-            { label:"Planeswalker",   match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("planeswalker") },
-            { label:"Battle",         match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("battle") },
-            { label:"Land",           match: c => isLand(c) },
+            { label:"Creature",     match: c => isCreature(c) },
+            { label:"Instant",      match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("instant") },
+            { label:"Sorcery",      match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("sorcery") },
+            { label:"Enchantment",  match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("enchantment") },
+            { label:"Artifact",     match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("artifact") },
+            { label:"Planeswalker", match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("planeswalker") },
+            { label:"Battle",       match: c => !isCreature(c) && !isLand(c) && (c.type_line||"").toLowerCase().includes("battle") },
+            { label:"Land",         match: c => isLand(c) },
           ].filter(r => cards.some(r.match));
 
           const splitRows = [
-            { label:"Creature",       match: isCreature },
-            { label:"Non-Creature",   match: isNonCreature },
+            { label:"Creature",     match: isCreature },
+            { label:"Non-Creature", match: isNonCreature },
           ];
 
           const rows = typeMode === "all" ? allTypeRows : splitRows;
 
+          // Find max total for bar scaling
+          const maxTotal = Math.max(...rows.map(r => cards.filter(r.match).length), 1);
+
           return (
             <div>
-              <div style={{display:"flex", gap:"8px", marginBottom:"16px"}}>
+              {/* Mode selector */}
+              <div style={{display:"flex", gap:"8px", marginBottom:"20px"}}>
                 {[["split","Creature vs Non-Creature"],["all","All Types"]].map(([m,label]) => (
                   <div key={m} onClick={() => setTypeMode(m)} style={{
                     padding:"4px 12px", fontSize:"11px", letterSpacing:"0.08em", textTransform:"uppercase",
@@ -4067,30 +4059,59 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
                   }}>{label}</div>
                 ))}
               </div>
-              <div style={{display:"flex", alignItems:"center", marginBottom:"4px", paddingBottom:"6px", borderBottom:"1px solid #333"}}>
-                <div style={{flex:1}}></div>
-                {cols.map(col => (
-                  <div key={col.key} style={{width:"44px", display:"flex", justifyContent:"center"}}>{col.header}</div>
-                ))}
-                <div style={{width:"52px", textAlign:"right", fontSize:"10px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.08em", paddingRight:"4px"}}>Total</div>
-              </div>
-              {rows.map(({ label, match }) => {
-                const matching = cards.filter(match);
-                return (
-                  <div key={label} style={{display:"flex", alignItems:"center", padding:"8px 0", borderBottom:"1px solid #1a1a1a"}}>
-                    <div style={{flex:1, fontSize:"12px", color:"#ccc"}}>{label}</div>
-                    {cols.map(col => {
-                      const cnt = matching.filter(col.match).length;
-                      return (
-                        <div key={col.key} style={{width:"44px", textAlign:"center", fontSize:"12px", color: cnt>0 ? "#aaa" : "#333"}}>
-                          {cnt || "—"}
+
+              {/* Stacked bars */}
+              <div style={{display:"flex", flexDirection:"column", gap:"10px"}}>
+                {rows.map(({ label, match }) => {
+                  const pool  = cards.filter(match);
+                  const total = pool.length;
+                  const segs  = segments.map(s => ({ ...s, count: pool.filter(s.match).length })).filter(s => s.count > 0);
+                  return (
+                    <div key={label} style={{display:"flex", alignItems:"center", gap:"12px"}}>
+                      <div style={{width:"100px", fontSize:"12px", color:"#aaa", textAlign:"right", flexShrink:0}}>{label}</div>
+                      <div style={{flex:1, position:"relative"}}>
+                        {/* Background track */}
+                        <div style={{height:"22px", backgroundColor:"#1a1a1a", borderRadius:"3px", overflow:"hidden", display:"flex"}}>
+                          {segs.map(s => (
+                            <div
+                              key={s.key}
+                              title={`${s.label}: ${s.count}`}
+                              style={{
+                                width:`${(s.count/total)*100}%`,
+                                backgroundColor: s.color,
+                                height:"100%",
+                                transition:"width 0.3s",
+                                position:"relative",
+                              }}
+                            >
+                              {/* Show count inside segment if wide enough */}
+                              {(s.count/total) > 0.06 && (
+                                <span style={{
+                                  position:"absolute", top:"50%", left:"50%",
+                                  transform:"translate(-50%,-50%)",
+                                  fontSize:"10px", color:"rgba(0,0,0,0.7)", fontWeight:"700",
+                                  pointerEvents:"none",
+                                }}>{s.count}</span>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      );
-                    })}
-                    <div style={{width:"52px", textAlign:"right", fontSize:"13px", color:"#fff", fontWeight:"700", paddingRight:"4px"}}>{matching.length}</div>
+                      </div>
+                      <div style={{width:"36px", textAlign:"right", fontSize:"13px", color:"#fff", fontWeight:"700", flexShrink:0}}>{total}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Legend */}
+              <div style={{display:"flex", flexWrap:"wrap", gap:"12px", marginTop:"16px"}}>
+                {segments.map(s => (
+                  <div key={s.key} style={{display:"flex", alignItems:"center", gap:"5px"}}>
+                    <div style={{width:"10px", height:"10px", borderRadius:"2px", backgroundColor:s.color, flexShrink:0}}></div>
+                    <span style={{fontSize:"10px", color:"#555"}}>{s.label}</span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
           );
         })()}
