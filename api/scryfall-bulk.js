@@ -16,42 +16,37 @@ export default async function handler(req, res) {
     "Content-Type": "application/json",
   };
 
-  // Separate split cards (contain "//") from normal cards
   const splitCards  = identifiers.filter(id => id.name.includes("//"));
   const normalCards = identifiers.filter(id => !id.name.includes("//"));
 
-  const found = [];
+  const found    = [];
   const notFound = [];
 
-  // 1. Normal cards via /cards/collection (batch of 75)
+  // Normal cards via /cards/collection (batch of 75)
   if (normalCards.length > 0) {
     try {
       const response = await fetch("https://api.scryfall.com/cards/collection", {
-        method: "POST",
-        headers,
+        method: "POST", headers,
         body: JSON.stringify({ identifiers: normalCards }),
       });
       const data = await response.json();
       if (response.ok) {
-        (data.data || []).forEach(card => found.push(buildCardData(card)));
-        (data.not_found || []).forEach(id => notFound.push(id.name || ""));
+        (data.data     || []).forEach(card => found.push(buildCardData(card)));
+        (data.not_found|| []).forEach(id   => notFound.push(id.name || ""));
       }
-    } catch(err) {
+    } catch {
       normalCards.forEach(id => notFound.push(id.name));
     }
   }
 
-  // 2. Split cards via fuzzy search one by one
+  // Split cards via fuzzy search one by one
   for (const id of splitCards) {
     try {
       const url = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(id.name)}${id.set ? "&set=" + encodeURIComponent(id.set) : ""}`;
       const r = await fetch(url, { headers });
       const d = await r.json();
-      if (r.ok && d.object !== "error") {
-        found.push(buildCardData(d));
-      } else {
-        notFound.push(id.name);
-      }
+      if (r.ok && d.object !== "error") found.push(buildCardData(d));
+      else notFound.push(id.name);
     } catch {
       notFound.push(id.name);
     }
@@ -63,6 +58,19 @@ export default async function handler(req, res) {
 function buildCardData(data) {
   const imgUris   = data.image_uris || data.card_faces?.[0]?.image_uris || {};
   const typeParts = (data.type_line || "").split(" — ");
+
+  const cardFaces = data.card_faces
+    ? data.card_faces.map(f => ({
+        name:        f.name || "",
+        mana_cost:   f.mana_cost || "",
+        type_line:   f.type_line || "",
+        oracle_text: f.oracle_text || "",
+        power:       f.power ?? null,
+        toughness:   f.toughness ?? null,
+        image_uris:  f.image_uris || null,
+      }))
+    : null;
+
   return {
     id:           data.id,
     name:         data.name,
@@ -80,5 +88,6 @@ function buildCardData(data) {
     rarity:       data.rarity,
     image_normal: imgUris.normal || "",
     image_large:  imgUris.large  || "",
+    card_faces:   cardFaces,
   };
 }
