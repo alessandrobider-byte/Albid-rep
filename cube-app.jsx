@@ -1290,27 +1290,7 @@ async function fetchCardFromAPI(cardName, setCode) {
     }
   } catch {}
 
-  // Fallback: Claude knowledge
-  const setHint = setCode ? ` specifically from the set with code "${setCode.toUpperCase()}"` : " (use the most recent printing)";
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{
-        role: "user",
-        content: `Return a JSON object for the Magic: The Gathering card named "${cardName}"${setHint}. You MUST return ALL of these fields even if you have to estimate: name (exact card name), set (2-5 char lowercase set code), set_name (full set name), mana_cost (e.g. "{1}{U}"), colors (array of color letters e.g. ["U"]), cmc (converted mana cost as number), type_line (e.g. "Instant"), oracle_text (card rules text), power (null if not a creature), toughness (null if not a creature), rarity (common/uncommon/rare/mythic), scryfall_id (the Scryfall UUID if you know it, otherwise "unknown"). If the card does not exist in MTG set name to "not_found". Return ONLY the JSON object.`
-      }]
-    })
-  });
-  const rawText = await res.text();
-  if (!rawText) throw new Error("Empty response");
-  const apiData = JSON.parse(rawText);
-  const raw = (apiData.content || []).filter(b => b.type === "text").map(b => b.text).join("");
-  const parsed = extractJSON(raw);
-  if (!parsed || !parsed.name || parsed.name === "not_found") return null;
-  return buildCardObject(parsed);
+  return null;
 }
 
 function computeCardIssues(card, cardTags, allCards) {
