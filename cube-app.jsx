@@ -1329,11 +1329,34 @@ function computeCardIssues(card, cardTags, allCards) {
 function parseBulkList(text) {
   return text.split("\n")
     .map(l => l.trim())
-    .filter(l => l && !l.startsWith("//"))
+    .filter(l => l && !l.startsWith("#"))
     .map(l => {
-      const m = l.match(/^(\d+)?\s*(.+?)(?:\s+[\(\[]([\w\d]+)[\)\]])?(?:\s+\d+)?$/);
-      if (!m) return null;
-      return { qty: parseInt(m[1]) || 1, name: m[2].trim(), setCode: m[3]?.toLowerCase() || null };
+      // 1. Strip foil markers: *F*, *FOIL*, [F], (foil)
+      let s = l.replace(/\s*\*F\*|\*FOIL\*/gi, "").replace(/\s*\[F\]|\(foil\)/gi, "").trim();
+
+      // 2. Extract leading quantity: "1 " or "1x "
+      let qty = 1;
+      const qtyMatch = s.match(/^(\d+)x?\s+/i);
+      if (qtyMatch) { qty = parseInt(qtyMatch[1]) || 1; s = s.slice(qtyMatch[0].length).trim(); }
+
+      // 3. Extract set code in parens/brackets: (MH2), [MH2] — 2-6 alphanumeric chars
+      let setCode = null;
+      s = s.replace(/\s*[\(\[]([A-Za-z0-9]{2,6})[\)\]]/g, (_, code) => {
+        setCode = code.toLowerCase();
+        return "";
+      }).trim();
+
+      // 4. Strip collector number at end: "290", "EMA-157", "42"
+      s = s.replace(/\s+[A-Z]{0,4}-?\d+\s*$/i, "").trim();
+
+      // 5. Strip any remaining trailing numbers
+      s = s.replace(/\s+\d+\s*$/, "").trim();
+
+      // 6. Normalize split card names: keep full name e.g. "Fire // Ice"
+      s = s.replace(/\s*\/\/\s*/g, " // ").trim();
+
+      if (!s) return null;
+      return { qty, name: s, setCode };
     })
     .filter(Boolean);
 }
