@@ -3768,10 +3768,224 @@ function TagsTuningPage({ tagDB, cards }) {
 }
 
 
-function CubeAnalysisPage() {
+const COLOR_KEYS = ["W","U","B","R","G"];
+const COLOR_NAMES = { W:"White", U:"Blue", B:"Black", R:"Red", G:"Green" };
+const COLOR_HEX   = { W:"#c8b882", U:"#4a90d9", B:"#aaa", R:"#d94a4a", G:"#4a9d5a" };
+
+function ManaCurveBar({ cards }) {
+  const [mode, setMode] = React.useState("all");
+  const filtered = cards.filter(c => {
+    const tl = (c.type_line || "").toLowerCase();
+    if (mode === "creature") return tl.includes("creature");
+    if (mode === "spell")    return !tl.includes("creature") && !tl.includes("land");
+    return !tl.includes("land");
+  });
+  const maxCmc = 7;
+  const buckets = Array.from({ length: maxCmc + 1 }, (_, i) => ({
+    label: i === maxCmc ? `${maxCmc}+` : String(i),
+    count: filtered.filter(c => i === maxCmc ? (c.cmc || 0) >= maxCmc : (c.cmc || 0) === i).length,
+  }));
+  const maxCount = Math.max(...buckets.map(b => b.count), 1);
+  const barH = 80;
   return (
-    <div style={S.page}>
-      <div style={{ color: "#aaa", fontSize: "13px" }}>Coming soon.</div>
+    <div>
+      <div style={{ display:"flex", gap:"8px", marginBottom:"16px" }}>
+        {["all","creature","spell"].map(m => (
+          <div key={m} onClick={() => setMode(m)} style={{
+            padding:"4px 12px", fontSize:"11px", letterSpacing:"0.08em", textTransform:"uppercase",
+            cursor:"pointer", borderRadius:"4px", border:"1px solid",
+            borderColor: mode===m ? "#c8a000" : "#333",
+            color: mode===m ? "#c8a000" : "#aaa",
+            backgroundColor: mode===m ? "rgba(200,160,0,0.08)" : "transparent",
+          }}>{m === "all" ? "All" : m === "creature" ? "Creatures" : "Spells"}</div>
+        ))}
+      </div>
+      <div style={{ display:"flex", alignItems:"flex-end", gap:"6px", height:`${barH + 28}px` }}>
+        {buckets.map(({ label, count }) => {
+          const h = count === 0 ? 2 : Math.max(4, Math.round((count / maxCount) * barH));
+          return (
+            <div key={label} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
+              <div style={{ fontSize:"10px", color:"#aaa" }}>{count > 0 ? count : ""}</div>
+              <div style={{ width:"100%", height:`${h}px`, backgroundColor: count===0 ? "#1a1a1a" : "#c8a000", borderRadius:"2px 2px 0 0" }} />
+              <div style={{ fontSize:"10px", color:"#555" }}>{label}</div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize:"10px", color:"#444", textAlign:"right", marginTop:"4px" }}>CMC</div>
+    </div>
+  );
+}
+
+function ColorDistRow({ colorKey, target, actual }) {
+  const over = actual > target;
+  const ok   = actual === target;
+  const statusColor = ok ? "#4a9d5a" : over ? "#d94a4a" : "#c8a000";
+  const barW = Math.min(100, Math.round((actual / Math.max(target, 1)) * 100));
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:"12px", padding:"7px 0", borderBottom:"1px solid #1a1a1a" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:"6px", width:"80px", flexShrink:0 }}>
+        <ManaIcon c={colorKey} size={18} />
+        <span style={{ fontSize:"12px", color:"#aaa" }}>{COLOR_NAMES[colorKey]}</span>
+      </div>
+      <div style={{ flex:1, height:"6px", backgroundColor:"#1a1a1a", borderRadius:"3px", overflow:"hidden" }}>
+        <div style={{ width:`${barW}%`, height:"100%", backgroundColor: COLOR_HEX[colorKey], borderRadius:"3px" }} />
+      </div>
+      <div style={{ fontSize:"12px", color: statusColor, minWidth:"80px", textAlign:"right" }}>
+        {actual} <span style={{ color:"#444" }}>/</span> {target}
+      </div>
+    </div>
+  );
+}
+
+function CubeAnalysisPage({ cards, db, tagDB }) {
+  const { size, colorless, monoPerColor, bicolorPerGuild, dualLands } = db;
+
+  const monoTarget = Math.round(monoPerColor || 0);
+  const colorDist  = COLOR_KEYS.map(k => ({
+    key: k,
+    target: monoTarget,
+    actual: cards.filter(c => (c.colors||[]).length === 1 && c.colors[0] === k).length,
+  }));
+
+  const biTarget      = Math.round(bicolorPerGuild || 0);
+  const biActual      = cards.filter(c => (c.colors||[]).length === 2).length;
+  const biTargetTotal = biTarget * 10;
+  const colorlessActual = cards.filter(c => (c.colors||[]).length === 0 && !(c.type_line||"").toLowerCase().includes("land")).length;
+  const landsActual   = cards.filter(c => (c.type_line||"").toLowerCase().includes("land")).length;
+  const filled        = cards.length;
+
+  const cardAdvSubs = UTILITY_DATA.filter(d => d.core === 1 && d.cat === "Card Advantage").map(d => d.sub);
+  const removalSubs = UTILITY_DATA.filter(d => d.core === 1 && d.cat === "Removal").map(d => d.sub);
+  const cardAdvCards = cards.filter(c => (c.tags?.utility || []).some(u => cardAdvSubs.includes(u)));
+  const removalCards = cards.filter(c => (c.tags?.utility || []).some(u => removalSubs.includes(u)));
+
+  const mainActive   = PREDEFINED_MAIN_ARCHETYPES.filter(a =>
+    cards.some(c => (c.tags?.main_archetype||[]).includes(a.name) || (c.tags?.main_archetype_support||[]).includes(a.name))
+  );
+  const tribalActive = PREDEFINED_TRIBAL_ARCHETYPES.filter(a =>
+    cards.some(c => (c.tags?.tribal_archetype||[]).includes(a.name) || (c.tags?.tribal_archetype_support||[]).includes(a.name))
+  );
+
+  const guildCoverage = GUILDS_LIST.map(({ name, colors }) => {
+    const gc    = cards.filter(c => c.tags?.guild === name);
+    const count = PREDEFINED_MAIN_ARCHETYPES.filter(a =>
+      gc.some(c => (c.tags?.main_archetype_support||[]).includes(a.name))
+    ).length;
+    return { name, colors, count };
+  });
+
+  const statBox = (label, value, sub, color="#fff") => (
+    <div style={{ backgroundColor:"#111", border:"1px solid #222", borderRadius:"4px", padding:"20px", flex:1, minWidth:"120px" }}>
+      <div style={{ fontSize:"10px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"8px" }}>{label}</div>
+      <div style={{ fontSize:"24px", fontWeight:"700", color }}>{value}</div>
+      {sub && <div style={{ fontSize:"11px", color:"#555", marginTop:"4px" }}>{sub}</div>}
+    </div>
+  );
+
+  return (
+    <div style={{ ...S.page, maxWidth:"960px" }}>
+      <div style={{ display:"flex", gap:"12px", marginBottom:"32px", flexWrap:"wrap" }}>
+        {statBox("Cards in cube", filled, `of ${size} target`, filled === size ? "#4a9d5a" : filled > size ? "#d94a4a" : "#c8a000")}
+        {statBox("Main archetypes", mainActive.length, `of ${PREDEFINED_MAIN_ARCHETYPES.length} defined`, "#c8a000")}
+        {statBox("Tribal archetypes", tribalActive.length, `of ${PREDEFINED_TRIBAL_ARCHETYPES.length} defined`, "#4a90d9")}
+        {statBox("Card advantage", cardAdvCards.length, "core utility cards")}
+        {statBox("Removal", removalCards.length, "core utility cards", "#d94a4a")}
+      </div>
+
+      <div style={S.box}>
+        <div style={S.boxTitle}>Color distribution — mono slots</div>
+        {colorDist.map(({ key, target, actual }) => (
+          <ColorDistRow key={key} colorKey={key} target={target} actual={actual} />
+        ))}
+        <div style={{ display:"flex", alignItems:"center", gap:"12px", padding:"7px 0", borderBottom:"1px solid #1a1a1a", marginTop:"8px", borderTop:"1px solid #222" }}>
+          <span style={{ fontSize:"12px", color:"#aaa", width:"80px", flexShrink:0 }}>Bicolor</span>
+          <div style={{ flex:1, height:"6px", backgroundColor:"#1a1a1a", borderRadius:"3px", overflow:"hidden" }}>
+            <div style={{ width:`${Math.min(100,Math.round((biActual/Math.max(biTargetTotal,1))*100))}%`, height:"100%", backgroundColor:"#7a5fa0", borderRadius:"3px" }} />
+          </div>
+          <div style={{ fontSize:"12px", color: biActual===biTargetTotal?"#4a9d5a":biActual>biTargetTotal?"#d94a4a":"#c8a000", minWidth:"80px", textAlign:"right" }}>
+            {biActual} <span style={{ color:"#444" }}>/</span> {biTargetTotal}
+          </div>
+        </div>
+        {colorless > 0 && (
+          <div style={{ display:"flex", alignItems:"center", gap:"12px", padding:"7px 0", borderBottom:"1px solid #1a1a1a" }}>
+            <span style={{ fontSize:"12px", color:"#aaa", width:"80px", flexShrink:0 }}>Colorless</span>
+            <div style={{ flex:1, height:"6px", backgroundColor:"#1a1a1a", borderRadius:"3px", overflow:"hidden" }}>
+              <div style={{ width:`${Math.min(100,Math.round((colorlessActual/Math.max(colorless,1))*100))}%`, height:"100%", backgroundColor:"#666", borderRadius:"3px" }} />
+            </div>
+            <div style={{ fontSize:"12px", color: colorlessActual===colorless?"#4a9d5a":colorlessActual>colorless?"#d94a4a":"#c8a000", minWidth:"80px", textAlign:"right" }}>
+              {colorlessActual} <span style={{ color:"#444" }}>/</span> {colorless}
+            </div>
+          </div>
+        )}
+        <div style={{ display:"flex", alignItems:"center", gap:"12px", padding:"7px 0" }}>
+          <span style={{ fontSize:"12px", color:"#aaa", width:"80px", flexShrink:0 }}>Lands</span>
+          <div style={{ flex:1, height:"6px", backgroundColor:"#1a1a1a", borderRadius:"3px", overflow:"hidden" }}>
+            <div style={{ width:`${Math.min(100,Math.round((landsActual/Math.max(dualLands||1,1))*100))}%`, height:"100%", backgroundColor:"#5a7a3a", borderRadius:"3px" }} />
+          </div>
+          <div style={{ fontSize:"12px", color: landsActual===(dualLands||0)?"#4a9d5a":landsActual>(dualLands||0)?"#d94a4a":"#c8a000", minWidth:"80px", textAlign:"right" }}>
+            {landsActual} <span style={{ color:"#444" }}>/</span> {dualLands||0}
+          </div>
+        </div>
+      </div>
+
+      <div style={S.box}>
+        <div style={S.boxTitle}>Mana curve</div>
+        <ManaCurveBar cards={cards} />
+      </div>
+
+      <div style={S.box}>
+        <div style={S.boxTitle}>Core utility — card advantage &amp; removal</div>
+        <div style={{ display:"flex", gap:"0", marginBottom:"8px" }}>
+          <div style={{ flex:1 }}></div>
+          {COLOR_KEYS.map(k => (
+            <div key={k} style={{ width:"44px", display:"flex", justifyContent:"center" }}>
+              <ManaIcon c={k} size={16} />
+            </div>
+          ))}
+          <div style={{ width:"52px", textAlign:"right", fontSize:"10px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.08em", paddingRight:"4px" }}>Total</div>
+        </div>
+        {[
+          { label:"Card Advantage", uc: cardAdvCards, color:"#4a90d9" },
+          { label:"Removal",        uc: removalCards,  color:"#d94a4a" },
+        ].map(({ label, uc, color }) => {
+          const byColor = COLOR_KEYS.map(k => uc.filter(c => (c.colors||[]).includes(k)).length);
+          return (
+            <div key={label} style={{ display:"flex", alignItems:"center", gap:"0", padding:"8px 0", borderBottom:"1px solid #1a1a1a" }}>
+              <div style={{ flex:1, fontSize:"12px", color:"#ccc" }}>{label}</div>
+              {byColor.map((cnt, i) => (
+                <div key={i} style={{ width:"44px", textAlign:"center", fontSize:"12px", color: cnt>0 ? COLOR_HEX[COLOR_KEYS[i]] : "#333" }}>{cnt || "—"}</div>
+              ))}
+              <div style={{ width:"52px", textAlign:"right", fontSize:"13px", color, fontWeight:"700", paddingRight:"4px" }}>{uc.length}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={S.box}>
+        <div style={S.boxTitle}>Archetype coverage — support per guild</div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
+          {guildCoverage.map(({ name, colors, count }) => {
+            const target      = MAIN_ARCH_PER_GUILD[db.size] || 2;
+            const statusColor = count === 0 ? "#333" : count < target ? "#c8a000" : "#4a9d5a";
+            return (
+              <div key={name} style={{ backgroundColor:"#0d0d0d", border:"1px solid #222", borderRadius:"4px", padding:"12px 16px", minWidth:"140px", flex:"1" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:"4px", marginBottom:"8px" }}>
+                  {colors.split("").map(c => <ManaIcon key={c} c={c} size={14} />)}
+                  <span style={{ fontSize:"11px", color:"#aaa", marginLeft:"4px" }}>{name}</span>
+                </div>
+                <div style={{ fontSize:"20px", fontWeight:"700", color: statusColor }}>{count}</div>
+                <div style={{ fontSize:"10px", color:"#444", marginTop:"2px" }}>archetypes supported</div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ marginTop:"16px", display:"flex", gap:"16px", fontSize:"11px", color:"#555" }}>
+          <span><span style={{ color:"#4a9d5a" }}>■</span> at target ({MAIN_ARCH_PER_GUILD[db.size]||2}+)</span>
+          <span><span style={{ color:"#c8a000" }}>■</span> below target</span>
+          <span><span style={{ color:"#333" }}>■</span> no archetypes</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -4530,7 +4744,7 @@ function ReferencePage() {
 function App() {
   const [active,         setActive]         = useState("Configure");
   const [buildTab,       setBuildTab]       = useState("Cards");
-  const [analysisTab,    setAnalysisTab]    = useState("Guilds");
+  const [analysisTab,    setAnalysisTab]    = useState("Cube");
   const [appliedFilters, setAppliedFilters] = useState({ ...EMPTY_FILTERS });
 
   function viewGuildInCards(guildName) {
@@ -4642,7 +4856,7 @@ function App() {
 
       {active === "Analyze" && (
         <div style={{display:"flex",gap:"1px",borderBottom:"1px solid #222",backgroundColor:"#0d0d0d",paddingLeft:"24px",paddingTop:"12px"}}>
-          {["Guilds", "Archetypes"].map(tab => (
+          {["Cube", "Guilds", "Archetypes"].map(tab => (
             <div key={tab} onClick={() => setAnalysisTab(tab)} style={analysisTab===tab
               ? {padding:"8px 20px",cursor:"pointer",fontSize:"13px",color:"#fff",borderBottom:"2px solid #d4af37",fontWeight:"600"}
               : {padding:"8px 20px",cursor:"pointer",fontSize:"13px",color:"#aaa",borderBottom:"2px solid transparent",fontWeight:"400"}}>
@@ -4655,6 +4869,7 @@ function App() {
       {active === "Configure" && <HomePage db={db} setDB={setDB} cards={cards} />}
       {active === "Build" && buildTab === "Cards"      && <CardsPage cards={cards} onAddCard={addCard} onUpdateCard={updateCard} onBulkUpdateCards={bulkUpdateCards} onDeleteCard={deleteCard} tagDB={tagDB} setTagDB={setTagDB} db={db} appliedFilters={appliedFilters} setAppliedFilters={setAppliedFilters} />}
       {active === "Build" && buildTab === "Archetypes" && <TagsTuningPage tagDB={tagDB} setTagDB={setTagDB} cards={cards} onUpdateCard={updateCard} />}
+      {active === "Analyze" && analysisTab === "Cube"        && <CubeAnalysisPage cards={cards} db={db} tagDB={tagDB} />}
       {active === "Analyze" && analysisTab === "Guilds"      && <div style={S.page}><div style={{ color:"#555", fontSize:"13px" }}>Coming soon.</div></div>}
       {active === "Analyze" && analysisTab === "Archetypes"  && <div style={S.page}><div style={{ color:"#555", fontSize:"13px" }}>Coming soon.</div></div>}
       {active === "Reference" && <ReferencePage />}
