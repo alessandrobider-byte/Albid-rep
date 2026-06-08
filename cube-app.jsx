@@ -1177,22 +1177,24 @@ function CardFaceDetail({ face }) {
 }
 
 function CardPreview({ card }) {
+  const [flipped, setFlipped] = React.useState(false);
   const rarityColor = { common: "#aaa", uncommon: "#8fb4d9", rare: "#d4af37", mythic: "#e07840" };
-  const faces       = card.card_faces || null;
-  const isDFC       = faces && faces.length >= 2;
+  const faces  = card.card_faces || null;
+  const isDFC  = faces && faces.length >= 2;
+  const activeFace = isDFC ? (flipped ? faces[1] : faces[0]) : null;
 
-  // Images: DFC may have per-face image_uris
   const frontImg = isDFC
     ? (faces[0].image_uris?.normal || card.image_uris?.normal || "")
     : (card.image_uris?.normal || "");
-  const backImg  = isDFC ? (faces[1].image_uris?.normal || "") : "";
+  const backImg  = isDFC ? (faces[1].image_uris?.normal || frontImg) : "";
+  const activeImg = isDFC ? (flipped ? backImg : frontImg) : frontImg;
 
   return (
     <div style={{ display: "flex", gap: "20px", marginTop: "20px", flexWrap: "wrap" }}>
-      {/* Images */}
-      <div style={{ display: "flex", gap: "8px", flexShrink: 0, alignSelf: "flex-start" }}>
-        {frontImg
-          ? <img src={frontImg} alt={faces ? faces[0].name : card.name}
+      {/* Image + Transform button */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px", flexShrink: 0, alignSelf: "flex-start" }}>
+        {activeImg
+          ? <img src={activeImg} alt={activeFace ? activeFace.name : card.name}
               style={{ width: "150px", borderRadius: "8px" }} />
           : <div style={{
                 width: "108px", height: "150px", borderRadius: "8px",
@@ -1205,9 +1207,16 @@ function CardPreview({ card }) {
               {(card.colors||[]).map(c => <ManaIcon key={c} c={c} size={28} />)}
             </div>
         }
-        {isDFC && backImg && (
-          <img src={backImg} alt={faces[1].name}
-            style={{ width: "150px", borderRadius: "8px" }} />
+        {isDFC && (
+          <div onClick={() => setFlipped(f => !f)} style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+            padding: "6px 12px", borderRadius: "8px", cursor: "pointer",
+            border: "1.5px solid #7b5ea7", backgroundColor: "#f5f0ff",
+            color: "#7b5ea7", fontSize: "13px", fontWeight: "600",
+            width: "150px", boxSizing: "border-box",
+          }}>
+            <span style={{ fontSize: "16px" }}>⇄</span> Transform
+          </div>
         )}
       </div>
 
