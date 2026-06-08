@@ -1257,7 +1257,7 @@ function buildCardObject(parsed) {
 async function fetchCardFromAPI(cardName, setCode) {
   // Try Vercel proxy first (real Scryfall data)
   try {
-    const url = `https://project-71rr6.vercel.app/api/scryfall?name=${encodeURIComponent(cardName)}${setCode ? `&set=${setCode}` : ""}`;
+    const url = `/api/scryfall?name=${encodeURIComponent(cardName)}${setCode ? `&set=${setCode}` : ""}`;
     const res  = await fetch(url);
     if (res.ok) {
       const data = await res.json();
