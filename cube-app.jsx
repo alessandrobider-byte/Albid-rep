@@ -1746,6 +1746,98 @@ function TagColumn({ label, tags }) {
   );
 }
 
+// ─── CARD HOVER OVERLAY ──────────────────────────────────────────────────────
+
+function CardHoverOverlay({ card, mouseY }) {
+  if (!card) return null;
+  const tags    = card.tags || {};
+  const faces   = card.card_faces || null;
+  const isDFC   = faces && faces.length >= 2;
+  const imgSrc  = isDFC
+    ? (faces[0].image_uris?.normal || card.image_uris?.normal || "")
+    : (card.image_uris?.normal || "");
+
+  const allTags = [
+    ...(tags.main_archetype         || []),
+    ...(tags.main_archetype_support || []),
+    ...(tags.tribal_archetype       || []),
+    ...(tags.tribal_archetype_support || []),
+    ...(tags.utility                || []),
+  ];
+
+  const overlayH = 320;
+  const top      = Math.max(8, mouseY - overlayH / 2);
+
+  return ReactDOM.createPortal(
+    <div style={{
+      position:        "fixed",
+      left:            "calc(50% + 520px)",
+      top:             top,
+      width:           "260px",
+      backgroundColor: "#111",
+      border:          "1px solid #333",
+      borderRadius:    "6px",
+      padding:         "12px",
+      zIndex:          9999,
+      pointerEvents:   "none",
+      boxShadow:       "0 8px 32px rgba(0,0,0,0.8)",
+    }}>
+      <div style={{display:"flex", gap:"12px"}}>
+        {imgSrc
+          ? <img src={imgSrc} alt={card.name} style={{width:"80px", borderRadius:"4px", flexShrink:0, alignSelf:"flex-start"}} />
+          : <div style={{
+              width:"80px", height:"112px", borderRadius:"4px", flexShrink:0,
+              background: (card.colors||[]).length
+                ? `linear-gradient(135deg, ${card.colors.map(c => MANA_STYLE[c]?.bg || "#333").join(", ")})`
+                : "#222",
+              border:"1px solid #333", display:"flex", alignItems:"center", justifyContent:"center",
+            }}>
+              {(card.colors||[]).map(c => <ManaIcon key={c} c={c} size={20} />)}
+            </div>
+        }
+        <div style={{flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:"6px"}}>
+          <div style={{fontSize:"13px", fontWeight:"700", color:"#fff", lineHeight:"1.3"}}>{card.name}</div>
+          <div style={{display:"flex", alignItems:"center", gap:"4px", flexWrap:"wrap"}}>
+            <ManaCost cost={card.mana_cost} size={13} />
+            {card.cmc > 0 && <span style={{fontSize:"10px", color:"#555"}}>CMC {card.cmc}</span>}
+          </div>
+          <div style={{fontSize:"11px", color:"#888"}}>{card.type_line}</div>
+        </div>
+      </div>
+
+      {/* Oracle text */}
+      {isDFC ? (
+        <div style={{marginTop:"10px", display:"flex", flexDirection:"column", gap:"8px"}}>
+          {faces.map((f, i) => (
+            <div key={i}>
+              {i > 0 && <div style={{borderTop:"1px solid #222", marginBottom:"8px"}}/>}
+              <div style={{fontSize:"11px", color:"#aaa", fontWeight:"600", marginBottom:"3px"}}>{f.name}</div>
+              <div style={{fontSize:"11px", color:"#777", lineHeight:"1.5", whiteSpace:"pre-wrap"}}>{f.oracle_text}</div>
+            </div>
+          ))}
+        </div>
+      ) : card.oracle_text ? (
+        <div style={{marginTop:"10px", fontSize:"11px", color:"#777", lineHeight:"1.5", whiteSpace:"pre-wrap"}}>
+          {card.oracle_text}
+        </div>
+      ) : null}
+
+      {/* Tags readonly */}
+      {allTags.length > 0 && (
+        <div style={{marginTop:"10px", display:"flex", flexWrap:"wrap", gap:"4px"}}>
+          {allTags.map(t => (
+            <span key={t} style={{
+              fontSize:"10px", color:"#555", backgroundColor:"#1a1a1a",
+              border:"1px solid #222", borderRadius:"3px", padding:"2px 6px",
+            }}>{t}</span>
+          ))}
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+}
+
 // ─── CARD ITEM ────────────────────────────────────────────────────────────────
 
 function CardItem({ card, onEdit, issues, allCards, bulkEditMode, isSelected, onToggleSelect }) {
@@ -1754,13 +1846,21 @@ function CardItem({ card, onEdit, issues, allCards, bulkEditMode, isSelected, on
   const guildData = GUILDS_LIST.find(g => g.name === guild);
   const rating    = getCardRating(card, allCards || []);
   const hasIssues = issues && issues.length > 0;
+  const [hovered,  setHovered]  = React.useState(false);
+  const [mouseY,   setMouseY]   = React.useState(0);
 
   const handleClick = (e) => {
     if (bulkEditMode) { e.stopPropagation(); onToggleSelect(card.id); }
   };
 
   return (
-    <div style={{ marginBottom: "8px" }} onClick={handleClick}>
+    <div style={{ marginBottom: "8px", position:"relative" }}
+      onClick={handleClick}
+      onMouseEnter={e => { setHovered(true);  setMouseY(e.clientY); }}
+      onMouseLeave={() => setHovered(false)}
+      onMouseMove={e  => setMouseY(e.clientY)}
+    >
+      {hovered && !bulkEditMode && <CardHoverOverlay card={card} mouseY={mouseY} />}
       <div style={{
         backgroundColor: "#111",
         border: isSelected ? "4px solid #c0392b" : "1px solid #222",
