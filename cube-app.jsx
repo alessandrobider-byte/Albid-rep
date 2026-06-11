@@ -1042,6 +1042,7 @@ function CardTagging({ cardTags, setCardTags, tagDB, setTagDB, cardColors, cardT
             <div style={{ display: "flex" }}>
               <TagBox label="" selected={cardTags.utility} pool={[...new Set(UTILITY_DATA.map(d => d.sub))].sort()} poolMeta={UTILITY_CAT_MAP}
                 poolMeta={UTILITY_CAT_MAP}
+                poolDesc={Object.fromEntries(UTILITY_DATA.map(d => [d.sub, d.desc]))}
                 onAdd={t => add("utility", t)} onRemove={t => remove("utility", t)} onCreateTag={t => {}} />
               <div style={{ flex: 1 }} />
             </div>
