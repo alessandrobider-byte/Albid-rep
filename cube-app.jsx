@@ -735,9 +735,34 @@ const DEFAULT_TAG_DB = {
 
 // ─── TAG BOX ──────────────────────────────────────────────────────────────────
 
-function TagBox({ label, selected, pool, onAdd, onRemove, onCreateTag, poolMeta = {} }) {
+function ArchTooltip({ desc, mouseX, mouseY }) {
+  if (!desc) return null;
+  const tooltipW = 280;
+  const margin   = 8;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let left = mouseX + 12;
+  if (left + tooltipW > vw - margin) left = mouseX - tooltipW - 12;
+  let top = mouseY - 12;
+  if (top + 120 > vh - margin) top = mouseY - 120;
+  if (top < margin) top = margin;
+  return ReactDOM.createPortal(
+    <div style={{
+      position:"fixed", left, top,
+      width:`${tooltipW}px`,
+      backgroundColor:"#1a1a1a", border:"1px solid #333", borderRadius:"4px",
+      padding:"10px 12px", zIndex:99999, pointerEvents:"none",
+      boxShadow:"0 4px 16px rgba(0,0,0,0.8)",
+      fontSize:"11px", color:"#aaa", lineHeight:"1.6",
+    }}>{desc}</div>,
+    document.body
+  );
+}
+
+function TagBox({ label, selected, pool, onAdd, onRemove, onCreateTag, poolMeta = {}, poolDesc = {} }) {
   const [open,   setOpen]   = useState(false);
   const [search, setSearch] = useState("");
+  const [tooltip, setTooltip] = useState({ desc: null, x: 0, y: 0 });
   const containerRef        = useRef(null);
 
   useEffect(() => {
@@ -756,6 +781,7 @@ function TagBox({ label, selected, pool, onAdd, onRemove, onCreateTag, poolMeta 
 
   return (
     <div ref={containerRef} style={{ flex: 1, minWidth: 0, position: "relative" }}>
+      <ArchTooltip desc={tooltip.desc} mouseX={tooltip.x} mouseY={tooltip.y} />
       <div style={{ fontSize: "10px", color: "#aaa", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>{label}</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "6px", minHeight: "20px" }}>
         {selected.length === 0
@@ -777,7 +803,6 @@ function TagBox({ label, selected, pool, onAdd, onRemove, onCreateTag, poolMeta 
             <input autoFocus value={search} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} onChange={e => setSearch(e.target.value)}
               onKeyDown={e => { if (e.key === "Escape") setOpen(false); }}
               placeholder="Search..."
-              autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
               style={{ ...S.input, width: "100%", borderRadius: 0, border: "none", borderBottom: "1px solid #333", boxSizing: "border-box", fontSize: "12px", padding: "8px 30px 8px 10px" }} />
             {search && (
               <span onClick={() => setSearch("")}
@@ -793,12 +818,19 @@ function TagBox({ label, selected, pool, onAdd, onRemove, onCreateTag, poolMeta 
                 onMouseEnter={e => e.currentTarget.style.backgroundColor = "#222"}
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
                 style={{ padding: "8px 10px", fontSize: "12px", color: "#aaa", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                <span>{t}</span>
+                <span style={{ flex: 1 }}>{t}</span>
                 {poolMeta[t] && <span style={{ fontSize: "10px", color: "#555", flexShrink: 0 }}>{poolMeta[t]}</span>}
+                {poolDesc[t] && (
+                  <span
+                    onMouseEnter={e => { e.stopPropagation(); setTooltip({ desc: poolDesc[t], x: e.clientX, y: e.clientY }); }}
+                    onMouseMove={e  => { e.stopPropagation(); setTooltip(p => ({ ...p, x: e.clientX, y: e.clientY })); }}
+                    onMouseLeave={e => { e.stopPropagation(); setTooltip({ desc: null, x: 0, y: 0 }); }}
+                    onClick={e => e.stopPropagation()}
+                    style={{ cursor:"default", color:"#4a90d9", fontWeight:"700", fontSize:"13px", border:"1px solid #333", borderRadius:"50%", width:"18px", height:"18px", display:"inline-flex", alignItems:"center", justifyContent:"center", userSelect:"none", flexShrink:0 }}>?</span>
+                )}
               </div>
             ))}
           </div>
-
         </div>
       )}
     </div>
@@ -985,8 +1017,10 @@ function CardTagging({ cardTags, setCardTags, tagDB, setTagDB, cardColors, cardT
             <div style={sectionTitle}>Main Archetype</div>
             <div style={{ display: "flex", gap: "12px" }}>
               <TagBox label="Active" selected={cardTags.main_archetype} pool={PREDEFINED_MAIN_ARCHETYPES.map(a => a.name)}
+                poolDesc={Object.fromEntries(PREDEFINED_MAIN_ARCHETYPES.map(a => [a.name, a.desc]))}
                 onAdd={t => add("main_archetype", t)} onRemove={t => remove("main_archetype", t)} onCreateTag={t => {}} />
               <TagBox label="Support" selected={cardTags.main_archetype_support} pool={PREDEFINED_MAIN_ARCHETYPES.map(a => a.name)}
+                poolDesc={Object.fromEntries(PREDEFINED_MAIN_ARCHETYPES.map(a => [a.name, a.desc]))}
                 onAdd={t => add("main_archetype_support", t)} onRemove={t => remove("main_archetype_support", t)} onCreateTag={t => {}} />
             </div>
           </div>
@@ -995,8 +1029,10 @@ function CardTagging({ cardTags, setCardTags, tagDB, setTagDB, cardColors, cardT
             <div style={sectionTitle}>Tribal Archetype</div>
             <div style={{ display: "flex", gap: "12px" }}>
               <TagBox label="Active" selected={cardTags.tribal_archetype} pool={PREDEFINED_TRIBAL_ARCHETYPES.map(a => a.name)}
+                poolDesc={Object.fromEntries(PREDEFINED_TRIBAL_ARCHETYPES.map(a => [a.name, a.desc]))}
                 onAdd={t => add("tribal_archetype", t)} onRemove={t => remove("tribal_archetype", t)} onCreateTag={t => {}} />
               <TagBox label="Support" selected={cardTags.tribal_archetype_support} pool={PREDEFINED_TRIBAL_ARCHETYPES.map(a => a.name)}
+                poolDesc={Object.fromEntries(PREDEFINED_TRIBAL_ARCHETYPES.map(a => [a.name, a.desc]))}
                 onAdd={t => add("tribal_archetype_support", t)} onRemove={t => remove("tribal_archetype_support", t)} onCreateTag={t => {}} />
             </div>
           </div>
