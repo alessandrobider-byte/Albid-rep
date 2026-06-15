@@ -945,7 +945,7 @@ function CardTagging({ cardTags, setCardTags, tagDB, setTagDB, cardColors, cardT
       ].some(t => t && t.length > 0);
       if (hasTags) { setShowIgnoreConfirm(true); return; }
     }
-    setCardTags(p => ({ ...p, ignore_tags: checked }));
+    setCardTags(p => ({ ...p, maybe_board: checked }));
   }
 
   function confirmIgnore() {
@@ -953,7 +953,7 @@ function CardTagging({ cardTags, setCardTags, tagDB, setTagDB, cardColors, cardT
       ...p,
       main_archetype: [], main_archetype_support: [],
       tribal_archetype: [], tribal_archetype_support: [],
-      utility: [], ignore_tags: true,
+      utility: [], maybe_board: true,
     }));
     setShowIgnoreConfirm(false);
   }
@@ -984,34 +984,18 @@ function CardTagging({ cardTags, setCardTags, tagDB, setTagDB, cardColors, cardT
         <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "12px", color: "#aaa" }}>
           <input
             type="checkbox"
-            checked={!!cardTags.ignore_tags}
-            onChange={e => handleIgnoreToggle(e.target.checked)}
+            checked={!!cardTags.maybe_board}
+            onChange={e => setCardTags(p => ({ ...p, maybe_board: e.target.checked }))}
             style={{ cursor: "pointer", accentColor: "#4a90d9" }}
           />
-          Ignore tags
+          Maybe board
+          <span
+            title="When checked, this card is excluded from all Analyze counts and Configure totals. It stays visible and filterable in Build > Cards. Use it to test the impact of temporarily removing a card from the cube."
+            style={{ cursor:"help", color:"#4a90d9", fontWeight:"700", fontSize:"11px", border:"1px solid #333", borderRadius:"50%", width:"16px", height:"16px", display:"inline-flex", alignItems:"center", justifyContent:"center", userSelect:"none" }}>?</span>
         </label>
       </div>
 
-      {showIgnoreConfirm && (
-        <div style={{
-          backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "4px",
-          padding: "16px", marginBottom: "16px",
-        }}>
-          <div style={{ fontSize: "13px", color: "#fff", marginBottom: "12px" }}>
-            This action will remove all tags. Confirm?
-          </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button onClick={confirmIgnore} style={{ ...S.btn, fontSize: "12px", padding: "6px 16px", backgroundColor: "#222", borderColor: "#444" }}>
-              Continue
-            </button>
-            <button onClick={() => setShowIgnoreConfirm(false)} style={{ ...S.btn, fontSize: "12px", padding: "6px 16px" }}>
-              Undo
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!cardTags.ignore_tags && (
+      {!cardTags.maybe_board && (
         <>
           <div style={section}>
             <div style={sectionTitle}>Main Archetype</div>
@@ -1116,7 +1100,7 @@ function mapCard(parsed) {
 
 function getRawScore(card) {
   const tags = card.tags || {};
-  if (tags.ignore_tags) return 0;
+  if (tags.maybe_board) return 0;
   const base =
     ((tags.main_archetype          || []).length * 4  ) +
     ((tags.main_archetype_support  || []).length * 0.5) +
@@ -1141,13 +1125,13 @@ function getRawScore(card) {
 function getCardRating(card, allCards) {
   const tags = card.tags || {};
   const hasTag = [tags.main_archetype, tags.main_archetype_support, tags.tribal_archetype, tags.tribal_archetype_support, tags.utility].some(t => t?.length > 0);
-  if (tags.ignore_tags) return { stars: 0, label: "N/A" };
+  if (tags.maybe_board) return { stars: 0, label: "N/A" };
   if (!hasTag)          return { stars: 0, label: "Unrated" };
 
   const raw = getRawScore(card);
   const ratedCards = allCards.filter(c => {
     const t = c.tags || {};
-    return !t.ignore_tags && [t.main_archetype, t.main_archetype_support, t.tribal_archetype, t.tribal_archetype_support, t.utility].some(a => a?.length > 0);
+    return !t.maybe_board && [t.main_archetype, t.main_archetype_support, t.tribal_archetype, t.tribal_archetype_support, t.utility].some(a => a?.length > 0);
   });
 
   const scores = ratedCards.map(getRawScore).sort((a, b) => a - b);
@@ -1386,7 +1370,7 @@ function computeCardIssues(card, cardTags, allCards) {
   }
 
   // No tags
-  if (!cardTags?.ignore_tags) {
+  if (!cardTags?.maybe_board) {
     const hasTag = [
       cardTags?.main_archetype, cardTags?.main_archetype_support,
       cardTags?.tribal_archetype, cardTags?.tribal_archetype_support,
@@ -1507,7 +1491,7 @@ function BulkImportTab({ onAddCard, onClose }) {
           rarity:           raw.rarity || "unknown",
           image_uris:       { normal: raw.image_normal || raw.card_faces?.[0]?.image_normal || "" },
           card_faces:       raw.card_faces || null,
-          tags:             { main_archetype: [], main_archetype_support: [], tribal_archetype: [], tribal_archetype_support: [], utility: [], guild: "", ignore_tags: false },
+          tags:             { main_archetype: [], main_archetype_support: [], tribal_archetype: [], tribal_archetype_support: [], utility: [], guild: "", maybe_board: false },
         }};
       } else {
         newResults[key] = { card: null };
@@ -1525,7 +1509,7 @@ function BulkImportTab({ onAddCard, onClose }) {
       const card = results[key]?.card;
       if (!card) return;
       for (let i = 0; i < line.qty; i++) {
-      onAddCard({ ...card, id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`, tags: { main_archetype: [], main_archetype_support: [], tribal_archetype: [], tribal_archetype_support: [], utility: [], guild: "", ignore_tags: false } });
+      onAddCard({ ...card, id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`, tags: { main_archetype: [], main_archetype_support: [], tribal_archetype: [], tribal_archetype_support: [], utility: [], guild: "", maybe_board: false } });
       }
     });
     onClose();
@@ -1600,7 +1584,7 @@ function AddCardModal({ onClose, onAddCard, tagDB, setTagDB, allCards, db }) {
   const [cardTags, setCardTags] = useState({
     main_archetype: [], main_archetype_support: [],
     tribal_archetype: [], tribal_archetype_support: [],
-    utility: [], guild: "", ignore_tags: false,
+    utility: [], guild: "", maybe_board: false,
   });
 
   async function handleSearch() {
@@ -1838,7 +1822,7 @@ function CardHoverOverlay({ card, mouseX, mouseY }) {
         <div style={{ marginTop:"24px", paddingTop:"20px", borderTop:"1px solid #1a1a1a" }}>
           <div style={{ fontSize:"11px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"20px" }}>Tags</div>
 
-          {tags.ignore_tags
+          {tags.maybe_board
             ? <div style={{ fontSize:"12px", color:"#555", fontStyle:"italic" }}>Tags ignored for this card.</div>
             : <>
                 <div style={section}>
@@ -1880,6 +1864,8 @@ function CardItem({ card, onEdit, issues, allCards, bulkEditMode, isSelected, on
   const [hovered,  setHovered]  = React.useState(false);
   const [mousePos, setMousePos] = React.useState({ x:0, y:0 });
 
+  const isMaybe   = !!tags.maybe_board;
+
   const handleClick = (e) => {
     if (bulkEditMode) { e.stopPropagation(); onToggleSelect(card.id); }
   };
@@ -1889,11 +1875,12 @@ function CardItem({ card, onEdit, issues, allCards, bulkEditMode, isSelected, on
       {hovered && <CardHoverOverlay card={card} mouseX={mousePos.x} mouseY={mousePos.y} />}
       <div style={{
         backgroundColor: "#111",
-        border: isSelected ? "4px solid #c0392b" : "1px solid #222",
+        border: isSelected ? "4px solid #c0392b" : isMaybe ? "1px solid #4a90d9" : "1px solid #222",
         borderRadius: hasIssues ? "4px 4px 0 0" : "4px",
         padding: isSelected ? "9px 11px" : "12px 14px",
         display: "flex", gap: "12px", alignItems: "stretch",
         cursor: bulkEditMode ? "pointer" : "default",
+        opacity: isMaybe ? 0.7 : 1,
       }}>
         {/* Image — hover trigger */}
         <div
@@ -1918,7 +1905,10 @@ function CardItem({ card, onEdit, issues, allCards, bulkEditMode, isSelected, on
 
         {/* Center content */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: "700", color: "#fff", fontSize: "14px", marginBottom: "4px" }}>{card.name}</div>
+          <div style={{ fontWeight: "700", color: "#fff", fontSize: "14px", marginBottom: "4px" }}>
+            {isMaybe && <span style={{ color:"#4a90d9", fontSize:"11px", fontWeight:"600", marginRight:"6px", letterSpacing:"0.06em" }}>maybe &gt;</span>}
+            {card.name}
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "5px", flexWrap: "wrap" }}>
             <ManaCost cost={card.mana_cost} size={14} />
             {card.type_line && <span style={{ fontSize: "11px", color: "#aaa" }}>{card.type_line}</span>}
@@ -2509,7 +2499,7 @@ function EditCardModal({ card, tagDB, setTagDB, allCards, db, onSave, onDelete, 
   const DEFAULT_TAGS = {
     main_archetype: [], main_archetype_support: [],
     tribal_archetype: [], tribal_archetype_support: [],
-    utility: [], guild: "", ignore_tags: false,
+    utility: [], guild: "", maybe_board: false,
   };
   const [cardTags, setCardTags] = useState({ ...DEFAULT_TAGS, ...(card.tags || {}) });
   const [confirmDel,   setConfirmDel]   = useState(false);
@@ -2682,7 +2672,7 @@ function applyFilters(cards, f) {
     const checks = [];
     if (e.duplicate)    checks.push(nameCounts[card.name.toLowerCase()] > 1);
     if (e.missingGuild) checks.push(!tags.guild);
-    if (e.missingTags)  checks.push(!tags.ignore_tags && ![tags.main_archetype, tags.main_archetype_support, tags.tribal_archetype, tags.tribal_archetype_support, tags.utility].some(t => t?.length > 0));
+    if (e.missingTags)  checks.push(!tags.maybe_board && ![tags.main_archetype, tags.main_archetype_support, tags.tribal_archetype, tags.tribal_archetype_support, tags.utility].some(t => t?.length > 0));
     if (checks.length === 0) return null;
     return isAnd ? checks.every(Boolean) : checks.some(Boolean);
   };
@@ -3422,7 +3412,7 @@ function CardsPage({ cards, onAddCard, onUpdateCard, onBulkUpdateCards, onDelete
             });
             cards.forEach(c => {
               if (!c.tags?.guild) { issueMap[c.id] = issueMap[c.id] || []; issueMap[c.id].push({ msg: "This card is not yet assigned to a guild, edit to assign.", color: "#c8a000" }); }
-              if (!c.tags?.ignore_tags) {
+              if (!c.tags?.maybe_board) {
                 const hasTag = [c.tags?.main_archetype, c.tags?.main_archetype_support, c.tags?.tribal_archetype, c.tags?.tribal_archetype_support, c.tags?.utility].some(t => t && t.length > 0);
                 if (!hasTag) { issueMap[c.id] = issueMap[c.id] || []; issueMap[c.id].push({ msg: "This card has no tagging. Edit to add tags or ignore them.", color: "#c8a000" }); }
               }
@@ -5333,12 +5323,12 @@ function App() {
         </div>
       )}
 
-      {active === "Configure" && <HomePage db={db} setDB={setDB} cards={cards} />}
+      {active === "Configure" && <HomePage db={db} setDB={setDB} cards={cards.filter(c => !c.tags?.maybe_board)} />}
       {active === "Build" && buildTab === "Cards"      && <CardsPage cards={cards} onAddCard={addCard} onUpdateCard={updateCard} onBulkUpdateCards={bulkUpdateCards} onDeleteCard={deleteCard} tagDB={tagDB} setTagDB={setTagDB} db={db} appliedFilters={appliedFilters} setAppliedFilters={setAppliedFilters} />}
       {active === "Build" && buildTab === "Archetypes" && <TagsTuningPage tagDB={tagDB} setTagDB={setTagDB} cards={cards} onUpdateCard={updateCard} />}
-      {active === "Analyze" && analysisTab === "Cube"        && <CubeAnalysisPage cards={cards} db={db} tagDB={tagDB} />}
+      {active === "Analyze" && analysisTab === "Cube"        && <CubeAnalysisPage cards={cards.filter(c => !c.tags?.maybe_board)} db={db} tagDB={tagDB} />}
       {active === "Analyze" && analysisTab === "Guilds"      && <div style={S.page}><div style={{ color:"#555", fontSize:"13px" }}>Coming soon.</div></div>}
-      {active === "Analyze" && analysisTab === "Archetypes"  && <ArchetypesAnalysisPage cards={cards} db={db} />}
+      {active === "Analyze" && analysisTab === "Archetypes"  && <ArchetypesAnalysisPage cards={cards.filter(c => !c.tags?.maybe_board)} db={db} />}
       {active === "Reference" && <ReferencePage />}
     </div>
     </div>
