@@ -2396,6 +2396,55 @@ function AssignArchetypesModal({ cards, selectedCards, tagDB, setTagDB, onUpdate
   );
 }
 
+function AssignPositionModal({ cards, selectedCards, onBulkUpdateCards, onClose, onDone, S }) {
+  const [position, setPosition] = React.useState(null);
+  const selectedList = cards.filter(c => selectedCards.has(c.id));
+
+  const doAssign = () => {
+    if (!position) return;
+    const updated = selectedList.map(c => ({
+      ...c,
+      tags: { ...(c.tags || {}), maybe_board: position === "maybeboard" },
+    }));
+    onBulkUpdateCards(updated);
+    onDone();
+  };
+
+  return (
+    <div onClick={onClose} style={{ position:"fixed", top:0, left:0, right:0, bottom:0, backgroundColor:"rgba(0,0,0,0.7)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div onClick={e => e.stopPropagation()} style={{ backgroundColor:"#111", border:"1px solid #333", borderRadius:"6px", padding:"28px", width:"420px", maxWidth:"90vw" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"16px" }}>
+          <span style={{ fontSize:"15px", fontWeight:"700", color:"#fff" }}>Assign Position</span>
+          <span onClick={onClose} style={{ cursor:"pointer", color:"#aaa", fontSize:"20px", lineHeight:1 }}>✕</span>
+        </div>
+        <p style={{ fontSize:"12px", color:"#aaa", marginBottom:"20px", lineHeight:"1.6", borderLeft:"3px solid #333", paddingLeft:"10px" }}>
+          Choose where to move the {selectedList.length} selected card{selectedList.length !== 1 ? "s" : ""}.
+        </p>
+        {[
+          { value:"active",     label:"Active cards",  desc:"Include in all counts and analysis." },
+          { value:"maybeboard", label:"Maybeboard",    desc:"Exclude from counts and analysis. Use to test the impact of removing a card." },
+        ].map(({ value, label, desc }) => (
+          <label key={value} onClick={() => setPosition(value)} style={{ display:"flex", alignItems:"flex-start", gap:"10px", padding:"12px", marginBottom:"8px", cursor:"pointer", borderRadius:"4px", border:`1px solid ${position === value ? "#4a90d9" : "#222"}`, backgroundColor: position === value ? "rgba(74,144,217,0.08)" : "transparent" }}>
+            <input type="radio" name="bulk_position" value={value}
+              checked={position === value}
+              onChange={() => setPosition(value)}
+              style={{ accentColor:"#4a90d9", marginTop:"2px", cursor:"pointer" }}
+            />
+            <div>
+              <div style={{ fontSize:"13px", color:"#fff", fontWeight:"600", marginBottom:"2px" }}>{label}</div>
+              <div style={{ fontSize:"11px", color:"#555" }}>{desc}</div>
+            </div>
+          </label>
+        ))}
+        <div style={{ display:"flex", gap:"10px", justifyContent:"flex-end", marginTop:"20px" }}>
+          <button onClick={onClose} style={{ ...S.btn, padding:"8px 16px", fontSize:"13px", borderColor:"#444", color:"#aaa" }}>Cancel</button>
+          <button onClick={doAssign} disabled={!position} style={{ ...S.btn, padding:"8px 16px", fontSize:"13px", borderColor: position ? "#4a90d9" : "#333", color: position ? "#4a90d9" : "#555", opacity: position ? 1 : 0.4, cursor: position ? "pointer" : "not-allowed" }}>Confirm</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AssignGuildModal({ cards, selectedCards, db, onUpdateCard, onClose, onDone, S }) {
   const selectedCardsList = cards.filter(c => selectedCards.has(c.id));
   const availableGuilds = [
@@ -2606,6 +2655,7 @@ const EMPTY_FILTERS = {
   minRank: 0,
   guilds: [],
   errors: { duplicate: false, missingGuild: false, missingTags: false },
+  position: "all",
 };
 
 function countFilters(f) {
@@ -2616,7 +2666,8 @@ function countFilters(f) {
     f.utility.length + f.colors.length + (f.colorless ? 1 : 0) +
     (f.minRank > 0 ? 1 : 0) +
     (f.guilds || []).length +
-    Object.values(f.errors || {}).filter(Boolean).length;
+    Object.values(f.errors || {}).filter(Boolean).length +
+    (f.position && f.position !== "all" ? 1 : 0);
 }
 
 function derivePool(cards, extractor) {
@@ -2683,7 +2734,16 @@ function applyFilters(cards, f) {
     return isAnd ? checks.every(Boolean) : checks.some(Boolean);
   };
 
-  return cards.filter(card => {
+  const posFiltered = (() => {
+    if (!f.position || f.position === "all") return cards;
+    if (f.position === "active")    return cards.filter(c => !c.tags?.maybe_board);
+    if (f.position === "maybeboard") return cards.filter(c => !!c.tags?.maybe_board);
+    return cards;
+  })();
+
+  if (countFilters({ ...f, position: "all" }) === 0) return posFiltered;
+
+  return posFiltered.filter(card => {
     const tags = card.tags || {};
     const checks = [
       rankCheck(card),
@@ -3032,6 +3092,23 @@ function FilterModal({ cards, appliedFilters, onApply, onClose, db }) {
               </div>
             </div>
           </AccordionSection>
+          <AccordionSection title="Position" count={f.position && f.position !== "all" ? 1 : 0}>
+            {[
+              { value:"all",        label:"All cards" },
+              { value:"active",     label:"Active cards only" },
+              { value:"maybeboard", label:"Maybeboard only" },
+            ].map(({ value, label }) => (
+              <label key={value} style={{ display:"flex", alignItems:"center", gap:"8px", padding:"7px 0", cursor:"pointer", fontSize:"13px", color:"#aaa", borderBottom:"1px solid #1a1a1a" }}>
+                <input type="radio" name="position" value={value}
+                  checked={(f.position || "all") === value}
+                  onChange={() => setF(p => ({ ...p, position: value }))}
+                  style={{ accentColor:"#4a90d9", cursor:"pointer", width:"14px", height:"14px" }}
+                />
+                {label}
+              </label>
+            ))}
+          </AccordionSection>
+
           <AccordionSection title="Errors" count={Object.values(f.errors || {}).filter(Boolean).length}>
             {[
               { key: "duplicate",    label: "Duplicate card"  },
@@ -3297,6 +3374,9 @@ function CardsPage({ cards, onAddCard, onUpdateCard, onBulkUpdateCards, onDelete
             })()}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <button onClick={() => setBulkModal("position")} disabled={selectedCards.size < 1} style={{ ...S.btn, padding: "6px 12px", fontSize: "12px", borderColor: "#444", color: selectedCards.size < 1 ? "#aaa" : "#ccc", opacity: selectedCards.size < 1 ? 0.4 : 1, cursor: selectedCards.size < 1 ? "not-allowed" : "pointer" }}>
+              Assign Position
+            </button>
             <button onClick={() => setBulkModal("archetypes")} disabled={selectedCards.size < 1} style={{ ...S.btn, padding: "6px 12px", fontSize: "12px", borderColor: "#444", color: selectedCards.size < 1 ? "#aaa" : "#ccc", opacity: selectedCards.size < 1 ? 0.4 : 1, cursor: selectedCards.size < 1 ? "not-allowed" : "pointer" }}>
               Assign Archetypes
             </button>
@@ -3340,6 +3420,16 @@ function CardsPage({ cards, onAddCard, onUpdateCard, onBulkUpdateCards, onDelete
             </div>
           </div>
         </div>
+      )}
+      {bulkModal === "position" && (
+        <AssignPositionModal
+          cards={cards}
+          selectedCards={selectedCards}
+          onBulkUpdateCards={onBulkUpdateCards}
+          onClose={() => setBulkModal(null)}
+          onDone={() => { setSelectedCards(new Set()); setBulkModal(null); toggleBulkEdit(); }}
+          S={S}
+        />
       )}
       {bulkModal === "guild" && (
         <AssignGuildModal
