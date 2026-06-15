@@ -4428,97 +4428,61 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
 }
 
 
-function SplitDot({ active, support, maxVal, size = 28 }) {
-  if (active === 0 && support === 0) return <div style={{ width: size, height: size }} />;
-  const total  = active + support;
-  const radius = Math.max(4, Math.round((total / maxVal) * (size / 2)));
-  const r      = radius;
-  const cx     = size / 2;
-  const cy     = size / 2;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display:"block" }}>
-      {/* Top half — active */}
-      {active > 0 && (
-        <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy} Z`} fill="#c8a000" opacity="0.85" />
-      )}
-      {/* Bottom half — support */}
-      {support > 0 && (
-        <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 0 ${cx + r} ${cy} Z`} fill="#4a90d9" opacity="0.7" />
-      )}
-      {/* Outline */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#333" strokeWidth="0.5" />
-    </svg>
-  );
-}
-
 function ArchetypesAnalysisPage({ cards, db }) {
-  const total   = cards.length || 1;
-  const THRESH  = 0.12;
+  const total      = cards.length || 1;
+  const THRESH     = 0.12;
+  const archPerGuild = MAIN_ARCH_PER_GUILD[db.size] || 2;
+  const visibleN   = archPerGuild * 10;
 
-  // Build data for each archetype
   const data = PREDEFINED_MAIN_ARCHETYPES.map(a => {
-    const nameLC   = a.name.toLowerCase();
-    const ratio    = parseFloat(a.ratio) / 100 || 0;
-    const noSupport = ratio === 0;
-
-    const activeCards  = cards.filter(c => (c.tags?.main_archetype || []).some(t => t.toLowerCase() === nameLC));
-    const supportCards = cards.filter(c => (c.tags?.main_archetype_support || []).some(t => t.toLowerCase() === nameLC));
-
-    const guildData = GUILDS_LIST.map(g => ({
-      guild:   g.name,
-      active:  activeCards.filter(c => c.tags?.guild === g.name).length,
-      support: supportCards.filter(c => c.tags?.guild === g.name).length,
+    const nameLC     = a.name.toLowerCase();
+    const ratio      = parseFloat(a.ratio) / 100 || 0;
+    const noSupport  = ratio === 0;
+    const activeCards  = cards.filter(c => (c.tags?.main_archetype||[]).some(t => t.toLowerCase()===nameLC));
+    const supportCards = cards.filter(c => (c.tags?.main_archetype_support||[]).some(t => t.toLowerCase()===nameLC));
+    const guildData  = GUILDS_LIST.map(g => ({
+      guild:  g.name,
+      active: activeCards.filter(c => c.tags?.guild === g.name).length,
     }));
-
-    return {
-      name:       a.name,
-      ratio,
-      noSupport,
-      activeCount:  activeCards.length,
-      supportCount: supportCards.length,
-      guildData,
-      totalActive:  activeCards.length,
-      totalAll:     activeCards.length + supportCards.length,
-    };
+    return { name:a.name, ratio, noSupport, activeCount:activeCards.length, supportCount:supportCards.length, guildData };
   })
-  .filter(a => a.totalAll > 0)
-  .sort((a, b) => a.name.localeCompare(b.name));
+  .filter(a => a.activeCount + a.supportCount > 0)
+  .sort((a,b) => b.activeCount - a.activeCount || b.supportCount - a.supportCount);
 
-  // Max value across all guild cells for dot sizing
-  const maxDotVal = Math.max(1, ...data.flatMap(a => a.guildData.map(g => g.active + g.support)));
+  const visible  = data.slice(0, visibleN);
+  const hidden   = data.slice(visibleN);
 
-  const activeColor  = (count) => {
-    if (count === 0) return "#333";
-    return count / total >= THRESH ? "#4a9d5a" : "#d94a4a";
-  };
-  const supportColor = (count, ratio, noSupport) => {
+  // Max active count in any single guild cell (for circle sizing)
+  const maxDot = Math.max(1, ...visible.flatMap(a => a.guildData.map(g => g.active)));
+
+  const activeColor  = n => n === 0 ? "#333" : n/total >= THRESH ? "#4a9d5a" : "#d94a4a";
+  const supportColor = (n, ratio, noSupport) => {
     if (noSupport) return "#4a9d5a";
-    if (count === 0) return "#333";
-    return count / total >= ratio ? "#4a9d5a" : "#d94a4a";
+    return n === 0 ? "#333" : n/total >= ratio ? "#4a9d5a" : "#d94a4a";
   };
 
-  const DOT_SIZE = 32;
+  const DOT_MAX = 20; // max circle radius in px
 
   return (
     <div style={{ ...S.page, maxWidth:"960px" }}>
-      {/* Legend */}
-      <div style={{ display:"flex", gap:"20px", marginBottom:"20px", flexWrap:"wrap", alignItems:"center" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-          <svg width="20" height="20" viewBox="0 0 20 20">
-            <path d="M 2 10 A 8 8 0 0 1 18 10 Z" fill="#c8a000" opacity="0.85" />
-            <path d="M 2 10 A 8 8 0 0 0 18 10 Z" fill="#4a90d9" opacity="0.7" />
-            <circle cx="10" cy="10" r="8" fill="none" stroke="#333" strokeWidth="0.5" />
-          </svg>
-          <span style={{ fontSize:"11px", color:"#555" }}>Top = active · Bottom = support</span>
+      <div style={{ display:"flex", alignItems:"baseline", gap:"12px", marginBottom:"20px" }}>
+        <div style={{ fontSize:"13px", color:"#aaa" }}>
+          Showing top <strong style={{color:"#fff"}}>{visible.length}</strong> archetypes ({archPerGuild} per guild · {db.size || "?"} card cube)
         </div>
-        <div style={{ display:"flex", gap:"12px" }}>
-          <span style={{ fontSize:"11px", color:"#4a9d5a" }}>■ at/above threshold</span>
-          <span style={{ fontSize:"11px", color:"#d94a4a" }}>■ below threshold</span>
-          <span style={{ fontSize:"11px", color:"#4a9d5a" }}>■ no support needed</span>
-        </div>
+        {hidden.length > 0 && (
+          <div style={{ fontSize:"11px", color:"#555" }}>+{hidden.length} more not shown</div>
+        )}
       </div>
 
-      {data.length === 0 ? (
+      {/* Legend */}
+      <div style={{ display:"flex", gap:"16px", marginBottom:"20px", flexWrap:"wrap" }}>
+        <span style={{ fontSize:"11px", color:"#4a9d5a" }}>■ at/above 12% threshold</span>
+        <span style={{ fontSize:"11px", color:"#d94a4a" }}>■ below threshold</span>
+        <span style={{ fontSize:"11px", color:"#4a9d5a" }}>■ autonomous (no support needed)</span>
+        <span style={{ fontSize:"11px", color:"#555" }}>○ circle size = active cards in guild</span>
+      </div>
+
+      {visible.length === 0 ? (
         <div style={{ color:"#555", fontSize:"13px" }}>No archetypes with tagged cards found.</div>
       ) : (
         <div style={{ overflowX:"auto" }}>
@@ -4528,9 +4492,9 @@ function ArchetypesAnalysisPage({ cards, db }) {
                 <th style={{ ...S.th, textAlign:"left", minWidth:"130px", position:"sticky", left:0, backgroundColor:"#0d0d0d", zIndex:2, padding:"8px 12px", fontSize:"10px" }}>Archetype</th>
                 <th style={{ ...S.th, textAlign:"center", minWidth:"52px", padding:"8px 6px", fontSize:"10px" }}>Active</th>
                 <th style={{ ...S.th, textAlign:"center", minWidth:"52px", padding:"8px 6px", fontSize:"10px" }}>Support</th>
-                <th style={{ ...S.th, textAlign:"center", minWidth:"72px", padding:"8px 6px", fontSize:"10px", color:"#555" }}>Ratio</th>
+                <th style={{ ...S.th, textAlign:"center", minWidth:"80px", padding:"8px 6px", fontSize:"10px", color:"#555" }}>Ratio</th>
                 {GUILDS_LIST.map(g => (
-                  <th key={g.name} style={{ ...S.th, textAlign:"center", width:"40px", minWidth:"40px", padding:"6px 2px" }}>
+                  <th key={g.name} style={{ ...S.th, textAlign:"center", width:"44px", minWidth:"44px", padding:"6px 2px" }}>
                     <div style={{ display:"flex", justifyContent:"center", gap:"1px" }}>
                       {g.colors.split("").map(c => <ManaIcon key={c} c={c} size={11} />)}
                     </div>
@@ -4539,39 +4503,60 @@ function ArchetypesAnalysisPage({ cards, db }) {
               </tr>
             </thead>
             <tbody>
-              {data.map(a => (
-                <tr key={a.name}>
-                  <td style={{ ...S.td(), position:"sticky", left:0, backgroundColor:"#0d0d0d", zIndex:1, fontSize:"12px", color:"#ccc", padding:"8px 12px", whiteSpace:"nowrap" }}>
+              {visible.map((a, idx) => (
+                <tr key={a.name} style={{ backgroundColor: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                  <td style={{ ...S.td(), position:"sticky", left:0, backgroundColor: idx%2===0 ? "#0d0d0d" : "#111", zIndex:1, fontSize:"12px", color:"#ccc", padding:"10px 12px", whiteSpace:"nowrap" }}>
                     {a.name}
                   </td>
-                  {/* Active */}
                   <td style={{ ...S.td(), textAlign:"center", padding:"6px", fontSize:"13px", fontWeight:"700", color: activeColor(a.activeCount) }}>
                     {a.activeCount || "—"}
                   </td>
-                  {/* Support */}
                   <td style={{ ...S.td(), textAlign:"center", padding:"6px", fontSize:"13px", fontWeight:"700", color: supportColor(a.supportCount, a.ratio, a.noSupport) }}>
-                    {a.noSupport ? <span style={{ color:"#4a9d5a", fontSize:"11px" }}>n/a</span> : (a.supportCount || "—")}
+                    {a.noSupport ? <span style={{ color:"#4a9d5a", fontSize:"10px" }}>n/a</span> : (a.supportCount || "—")}
                   </td>
-                  {/* Ratio */}
                   <td style={{ ...S.td(), textAlign:"center", padding:"6px", fontSize:"10px", color:"#555" }}>
                     {a.noSupport
                       ? <span style={{ color:"#4a9d5a" }}>autonomous</span>
-                      : `${Math.round(a.supportCount / total * 100)}% / ${Math.round(a.ratio * 100)}%`
+                      : `${Math.round(a.supportCount/total*100)}% / ${Math.round(a.ratio*100)}%`
                     }
                   </td>
-                  {/* Guild dots */}
-                  {a.guildData.map(g => (
-                    <td key={g.guild} style={{ ...S.td(), textAlign:"center", padding:"2px", verticalAlign:"middle" }}>
-                      <div style={{ display:"flex", justifyContent:"center", alignItems:"center" }}
-                        title={`${g.guild}: ${g.active} active, ${g.support} support`}>
-                        <SplitDot active={g.active} support={g.support} maxVal={maxDotVal} size={DOT_SIZE} />
-                      </div>
-                    </td>
-                  ))}
+                  {a.guildData.map(g => {
+                    const r = g.active === 0 ? 0 : Math.max(4, Math.round((g.active / maxDot) * DOT_MAX));
+                    const cellSize = DOT_MAX * 2 + 8;
+                    return (
+                      <td key={g.guild} style={{ ...S.td(), textAlign:"center", padding:"2px", verticalAlign:"middle" }}
+                        title={g.active > 0 ? `${g.guild}: ${g.active} active` : ""}>
+                        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:`${cellSize}px`, gap:"2px" }}>
+                          {g.active > 0 ? (
+                            <>
+                              <div style={{ fontSize:"10px", color:"#aaa", fontWeight:"600", lineHeight:1 }}>{g.active}</div>
+                              <svg width={cellSize} height={cellSize} viewBox={`0 0 ${cellSize} ${cellSize}`} style={{ display:"block", flexShrink:0 }}>
+                                <circle cx={cellSize/2} cy={cellSize/2} r={r} fill="none" stroke="#fff" strokeWidth="1.5" opacity="0.7" />
+                              </svg>
+                            </>
+                          ) : null}
+                        </div>
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Hidden archetypes summary */}
+      {hidden.length > 0 && (
+        <div style={{ marginTop:"24px", padding:"12px 16px", backgroundColor:"#0d0d0d", border:"1px solid #1a1a1a", borderRadius:"4px" }}>
+          <div style={{ fontSize:"11px", color:"#555", marginBottom:"8px", textTransform:"uppercase", letterSpacing:"0.08em" }}>Not shown ({hidden.length})</div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
+            {hidden.map(a => (
+              <span key={a.name} style={{ fontSize:"11px", color:"#444", backgroundColor:"#111", border:"1px solid #1a1a1a", borderRadius:"3px", padding:"2px 8px" }}>
+                {a.name} <span style={{ color:"#333" }}>({a.activeCount}/{a.supportCount})</span>
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </div>
