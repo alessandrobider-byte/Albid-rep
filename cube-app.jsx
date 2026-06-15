@@ -4350,6 +4350,112 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
 }
 
 
+function ArchetypesAnalysisPage({ cards, db }) {
+  const total = db.size || cards.length || 1;
+
+  // Threshold helpers
+  const cellColor = (count) => {
+    if (count === 0) return null;
+    const pct = count / total * 100;
+    if (pct >= 15)              return { bg:"rgba(74,144,217,0.18)",  text:"#4a90d9" };
+    if (pct >= 12)              return { bg:"rgba(74,157,90,0.18)",   text:"#4a9d5a" };
+    if (pct >= 9)               return { bg:"rgba(200,160,0,0.18)",   text:"#c8a000" };
+    return                             { bg:"rgba(217,74,74,0.18)",   text:"#d94a4a" };
+  };
+
+  // Build matrix: archetypes (rows) × guilds (cols)
+  // Only archetypes with at least 1 active card somewhere
+  const archetypes = PREDEFINED_MAIN_ARCHETYPES
+    .map(a => {
+      const guildCounts = GUILDS_LIST.map(g => ({
+        guild: g.name,
+        count: cards.filter(c =>
+          (c.tags?.guild || "") === g.name &&
+          (c.tags?.main_archetype || []).some(t => t.toLowerCase() === a.name.toLowerCase())
+        ).length,
+      }));
+      const total = guildCounts.reduce((s, g) => s + g.count, 0);
+      return { name: a.name, guildCounts, total };
+    })
+    .filter(a => a.total > 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const colW = 44;
+
+  return (
+    <div style={{ ...S.page, maxWidth:"960px" }}>
+      <div style={{ fontSize:"13px", color:"#555", marginBottom:"20px" }}>
+        Active cards per archetype per guild. Only assigned cards counted. Threshold based on {total} card cube.
+      </div>
+
+      {/* Legend */}
+      <div style={{ display:"flex", gap:"16px", marginBottom:"20px", flexWrap:"wrap" }}>
+        {[
+          { color:"#d94a4a", bg:"rgba(217,74,74,0.18)",  label:"Very low support (< 9%)" },
+          { color:"#c8a000", bg:"rgba(200,160,0,0.18)",  label:"Low support (9–12%)" },
+          { color:"#4a9d5a", bg:"rgba(74,157,90,0.18)",  label:"Perfect support (12–15%)" },
+          { color:"#4a90d9", bg:"rgba(74,144,217,0.18)", label:"Over supported (> 15%)" },
+        ].map(({ color, bg, label }) => (
+          <div key={label} style={{ display:"flex", alignItems:"center", gap:"6px" }}>
+            <div style={{ width:"12px", height:"12px", borderRadius:"2px", backgroundColor:bg, border:`1px solid ${color}` }} />
+            <span style={{ fontSize:"11px", color:"#555" }}>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {archetypes.length === 0 ? (
+        <div style={{ color:"#555", fontSize:"13px" }}>No archetypes with active cards found. Tag some cards first.</div>
+      ) : (
+        <div style={{ overflowX:"auto" }}>
+          <table style={{ borderCollapse:"collapse", width:"100%" }}>
+            <thead>
+              <tr>
+                <th style={{ ...S.th, textAlign:"left", minWidth:"140px", position:"sticky", left:0, backgroundColor:"#0d0d0d", zIndex:2, padding:"8px 12px" }}>
+                  Archetype
+                </th>
+                {GUILDS_LIST.map(g => (
+                  <th key={g.name} style={{ ...S.th, textAlign:"center", width:`${colW}px`, minWidth:`${colW}px`, padding:"6px 4px" }}>
+                    <div style={{ display:"flex", justifyContent:"center", gap:"1px" }}>
+                      {g.colors.split("").map(c => <ManaIcon key={c} c={c} size={12} />)}
+                    </div>
+                  </th>
+                ))}
+                <th style={{ ...S.th, textAlign:"right", minWidth:"48px", padding:"8px 4px", color:"#555" }}>Tot</th>
+              </tr>
+            </thead>
+            <tbody>
+              {archetypes.map(a => (
+                <tr key={a.name}>
+                  <td style={{
+                    ...S.td(), position:"sticky", left:0, backgroundColor:"#0d0d0d", zIndex:1,
+                    fontSize:"12px", color:"#ccc", padding:"8px 12px", whiteSpace:"nowrap",
+                  }}>{a.name}</td>
+                  {a.guildCounts.map(({ guild, count }) => {
+                    const style = cellColor(count);
+                    return (
+                      <td key={guild} style={{
+                        ...S.td(), textAlign:"center", width:`${colW}px`,
+                        backgroundColor: style ? style.bg : "transparent",
+                        fontSize:"12px", fontWeight: count > 0 ? "700" : "400",
+                        color: style ? style.text : "#1a1a1a",
+                        padding:"6px 4px",
+                      }}>
+                        {count > 0 ? count : ""}
+                      </td>
+                    );
+                  })}
+                  <td style={{ ...S.td(), textAlign:"right", fontSize:"12px", color:"#555", padding:"8px 4px" }}>{a.total}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function ArchetypesPage({ cards, db, tagDB }) {
   const guilds = GUILDS_LIST.map(g => g.name);
   const specials = [
@@ -5232,7 +5338,7 @@ function App() {
       {active === "Build" && buildTab === "Archetypes" && <TagsTuningPage tagDB={tagDB} setTagDB={setTagDB} cards={cards} onUpdateCard={updateCard} />}
       {active === "Analyze" && analysisTab === "Cube"        && <CubeAnalysisPage cards={cards} db={db} tagDB={tagDB} />}
       {active === "Analyze" && analysisTab === "Guilds"      && <div style={S.page}><div style={{ color:"#555", fontSize:"13px" }}>Coming soon.</div></div>}
-      {active === "Analyze" && analysisTab === "Archetypes"  && <div style={S.page}><div style={{ color:"#555", fontSize:"13px" }}>Coming soon.</div></div>}
+      {active === "Analyze" && analysisTab === "Archetypes"  && <ArchetypesAnalysisPage cards={cards} db={db} />}
       {active === "Reference" && <ReferencePage />}
     </div>
     </div>
