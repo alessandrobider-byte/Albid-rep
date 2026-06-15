@@ -4428,101 +4428,146 @@ function CubeAnalysisPage({ cards, db, tagDB }) {
 }
 
 
-function ArchetypesAnalysisPage({ cards, db }) {
-  const total = db.size || cards.length || 1;
+function SplitDot({ active, support, maxVal, size = 28 }) {
+  if (active === 0 && support === 0) return <div style={{ width: size, height: size }} />;
+  const total  = active + support;
+  const radius = Math.max(4, Math.round((total / maxVal) * (size / 2)));
+  const r      = radius;
+  const cx     = size / 2;
+  const cy     = size / 2;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display:"block" }}>
+      {/* Top half — active */}
+      {active > 0 && (
+        <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy} Z`} fill="#c8a000" opacity="0.85" />
+      )}
+      {/* Bottom half — support */}
+      {support > 0 && (
+        <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 0 ${cx + r} ${cy} Z`} fill="#4a90d9" opacity="0.7" />
+      )}
+      {/* Outline */}
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#333" strokeWidth="0.5" />
+    </svg>
+  );
+}
 
-  // Threshold helpers
-  const cellColor = (count) => {
-    if (count === 0) return null;
-    const pct = count / total * 100;
-    if (pct >= 15)              return { bg:"rgba(74,144,217,0.18)",  text:"#4a90d9" };
-    if (pct >= 12)              return { bg:"rgba(74,157,90,0.18)",   text:"#4a9d5a" };
-    if (pct >= 9)               return { bg:"rgba(200,160,0,0.18)",   text:"#c8a000" };
-    return                             { bg:"rgba(217,74,74,0.18)",   text:"#d94a4a" };
+function ArchetypesAnalysisPage({ cards, db }) {
+  const total   = cards.length || 1;
+  const THRESH  = 0.12;
+
+  // Build data for each archetype
+  const data = PREDEFINED_MAIN_ARCHETYPES.map(a => {
+    const nameLC   = a.name.toLowerCase();
+    const ratio    = parseFloat(a.ratio) / 100 || 0;
+    const noSupport = ratio === 0;
+
+    const activeCards  = cards.filter(c => (c.tags?.main_archetype || []).some(t => t.toLowerCase() === nameLC));
+    const supportCards = cards.filter(c => (c.tags?.main_archetype_support || []).some(t => t.toLowerCase() === nameLC));
+
+    const guildData = GUILDS_LIST.map(g => ({
+      guild:   g.name,
+      active:  activeCards.filter(c => c.tags?.guild === g.name).length,
+      support: supportCards.filter(c => c.tags?.guild === g.name).length,
+    }));
+
+    return {
+      name:       a.name,
+      ratio,
+      noSupport,
+      activeCount:  activeCards.length,
+      supportCount: supportCards.length,
+      guildData,
+      totalActive:  activeCards.length,
+      totalAll:     activeCards.length + supportCards.length,
+    };
+  })
+  .filter(a => a.totalAll > 0)
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Max value across all guild cells for dot sizing
+  const maxDotVal = Math.max(1, ...data.flatMap(a => a.guildData.map(g => g.active + g.support)));
+
+  const activeColor  = (count) => {
+    if (count === 0) return "#333";
+    return count / total >= THRESH ? "#4a9d5a" : "#d94a4a";
+  };
+  const supportColor = (count, ratio, noSupport) => {
+    if (noSupport) return "#4a9d5a";
+    if (count === 0) return "#333";
+    return count / total >= ratio ? "#4a9d5a" : "#d94a4a";
   };
 
-  // Build matrix: archetypes (rows) × guilds (cols)
-  // Only archetypes with at least 1 active card somewhere
-  const archetypes = PREDEFINED_MAIN_ARCHETYPES
-    .map(a => {
-      const guildCounts = GUILDS_LIST.map(g => ({
-        guild: g.name,
-        count: cards.filter(c =>
-          (c.tags?.guild || "") === g.name &&
-          (c.tags?.main_archetype || []).some(t => t.toLowerCase() === a.name.toLowerCase())
-        ).length,
-      }));
-      const total = guildCounts.reduce((s, g) => s + g.count, 0);
-      return { name: a.name, guildCounts, total };
-    })
-    .filter(a => a.total > 0)
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  const colW = 44;
+  const DOT_SIZE = 32;
 
   return (
     <div style={{ ...S.page, maxWidth:"960px" }}>
-      <div style={{ fontSize:"13px", color:"#555", marginBottom:"20px" }}>
-        Active cards per archetype per guild. Only assigned cards counted. Threshold based on {total} card cube.
-      </div>
-
       {/* Legend */}
-      <div style={{ display:"flex", gap:"16px", marginBottom:"20px", flexWrap:"wrap" }}>
-        {[
-          { color:"#d94a4a", bg:"rgba(217,74,74,0.18)",  label:"Very low support (< 9%)" },
-          { color:"#c8a000", bg:"rgba(200,160,0,0.18)",  label:"Low support (9–12%)" },
-          { color:"#4a9d5a", bg:"rgba(74,157,90,0.18)",  label:"Perfect support (12–15%)" },
-          { color:"#4a90d9", bg:"rgba(74,144,217,0.18)", label:"Over supported (> 15%)" },
-        ].map(({ color, bg, label }) => (
-          <div key={label} style={{ display:"flex", alignItems:"center", gap:"6px" }}>
-            <div style={{ width:"12px", height:"12px", borderRadius:"2px", backgroundColor:bg, border:`1px solid ${color}` }} />
-            <span style={{ fontSize:"11px", color:"#555" }}>{label}</span>
-          </div>
-        ))}
+      <div style={{ display:"flex", gap:"20px", marginBottom:"20px", flexWrap:"wrap", alignItems:"center" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+          <svg width="20" height="20" viewBox="0 0 20 20">
+            <path d="M 2 10 A 8 8 0 0 1 18 10 Z" fill="#c8a000" opacity="0.85" />
+            <path d="M 2 10 A 8 8 0 0 0 18 10 Z" fill="#4a90d9" opacity="0.7" />
+            <circle cx="10" cy="10" r="8" fill="none" stroke="#333" strokeWidth="0.5" />
+          </svg>
+          <span style={{ fontSize:"11px", color:"#555" }}>Top = active · Bottom = support</span>
+        </div>
+        <div style={{ display:"flex", gap:"12px" }}>
+          <span style={{ fontSize:"11px", color:"#4a9d5a" }}>■ at/above threshold</span>
+          <span style={{ fontSize:"11px", color:"#d94a4a" }}>■ below threshold</span>
+          <span style={{ fontSize:"11px", color:"#4a9d5a" }}>■ no support needed</span>
+        </div>
       </div>
 
-      {archetypes.length === 0 ? (
-        <div style={{ color:"#555", fontSize:"13px" }}>No archetypes with active cards found. Tag some cards first.</div>
+      {data.length === 0 ? (
+        <div style={{ color:"#555", fontSize:"13px" }}>No archetypes with tagged cards found.</div>
       ) : (
         <div style={{ overflowX:"auto" }}>
           <table style={{ borderCollapse:"collapse", width:"100%" }}>
             <thead>
               <tr>
-                <th style={{ ...S.th, textAlign:"left", minWidth:"140px", position:"sticky", left:0, backgroundColor:"#0d0d0d", zIndex:2, padding:"8px 12px" }}>
-                  Archetype
-                </th>
+                <th style={{ ...S.th, textAlign:"left", minWidth:"130px", position:"sticky", left:0, backgroundColor:"#0d0d0d", zIndex:2, padding:"8px 12px", fontSize:"10px" }}>Archetype</th>
+                <th style={{ ...S.th, textAlign:"center", minWidth:"52px", padding:"8px 6px", fontSize:"10px" }}>Active</th>
+                <th style={{ ...S.th, textAlign:"center", minWidth:"52px", padding:"8px 6px", fontSize:"10px" }}>Support</th>
+                <th style={{ ...S.th, textAlign:"center", minWidth:"72px", padding:"8px 6px", fontSize:"10px", color:"#555" }}>Ratio</th>
                 {GUILDS_LIST.map(g => (
-                  <th key={g.name} style={{ ...S.th, textAlign:"center", width:`${colW}px`, minWidth:`${colW}px`, padding:"6px 4px" }}>
+                  <th key={g.name} style={{ ...S.th, textAlign:"center", width:"40px", minWidth:"40px", padding:"6px 2px" }}>
                     <div style={{ display:"flex", justifyContent:"center", gap:"1px" }}>
-                      {g.colors.split("").map(c => <ManaIcon key={c} c={c} size={12} />)}
+                      {g.colors.split("").map(c => <ManaIcon key={c} c={c} size={11} />)}
                     </div>
                   </th>
                 ))}
-                <th style={{ ...S.th, textAlign:"right", minWidth:"48px", padding:"8px 4px", color:"#555" }}>Tot</th>
               </tr>
             </thead>
             <tbody>
-              {archetypes.map(a => (
+              {data.map(a => (
                 <tr key={a.name}>
-                  <td style={{
-                    ...S.td(), position:"sticky", left:0, backgroundColor:"#0d0d0d", zIndex:1,
-                    fontSize:"12px", color:"#ccc", padding:"8px 12px", whiteSpace:"nowrap",
-                  }}>{a.name}</td>
-                  {a.guildCounts.map(({ guild, count }) => {
-                    const style = cellColor(count);
-                    return (
-                      <td key={guild} style={{
-                        ...S.td(), textAlign:"center", width:`${colW}px`,
-                        backgroundColor: style ? style.bg : "transparent",
-                        fontSize:"12px", fontWeight: count > 0 ? "700" : "400",
-                        color: style ? style.text : "#1a1a1a",
-                        padding:"6px 4px",
-                      }}>
-                        {count > 0 ? count : ""}
-                      </td>
-                    );
-                  })}
-                  <td style={{ ...S.td(), textAlign:"right", fontSize:"12px", color:"#555", padding:"8px 4px" }}>{a.total}</td>
+                  <td style={{ ...S.td(), position:"sticky", left:0, backgroundColor:"#0d0d0d", zIndex:1, fontSize:"12px", color:"#ccc", padding:"8px 12px", whiteSpace:"nowrap" }}>
+                    {a.name}
+                  </td>
+                  {/* Active */}
+                  <td style={{ ...S.td(), textAlign:"center", padding:"6px", fontSize:"13px", fontWeight:"700", color: activeColor(a.activeCount) }}>
+                    {a.activeCount || "—"}
+                  </td>
+                  {/* Support */}
+                  <td style={{ ...S.td(), textAlign:"center", padding:"6px", fontSize:"13px", fontWeight:"700", color: supportColor(a.supportCount, a.ratio, a.noSupport) }}>
+                    {a.noSupport ? <span style={{ color:"#4a9d5a", fontSize:"11px" }}>n/a</span> : (a.supportCount || "—")}
+                  </td>
+                  {/* Ratio */}
+                  <td style={{ ...S.td(), textAlign:"center", padding:"6px", fontSize:"10px", color:"#555" }}>
+                    {a.noSupport
+                      ? <span style={{ color:"#4a9d5a" }}>autonomous</span>
+                      : `${Math.round(a.supportCount / total * 100)}% / ${Math.round(a.ratio * 100)}%`
+                    }
+                  </td>
+                  {/* Guild dots */}
+                  {a.guildData.map(g => (
+                    <td key={g.guild} style={{ ...S.td(), textAlign:"center", padding:"2px", verticalAlign:"middle" }}>
+                      <div style={{ display:"flex", justifyContent:"center", alignItems:"center" }}
+                        title={`${g.guild}: ${g.active} active, ${g.support} support`}>
+                        <SplitDot active={g.active} support={g.support} maxVal={maxDotVal} size={DOT_SIZE} />
+                      </div>
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
