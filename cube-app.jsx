@@ -995,8 +995,7 @@ function CardTagging({ cardTags, setCardTags, tagDB, setTagDB, cardColors, cardT
         </label>
       </div>
 
-      {!cardTags.maybe_board && (
-        <>
+      <>
           <div style={section}>
             <div style={sectionTitle}>Main Archetype</div>
             <div style={{ display: "flex", gap: "12px" }}>
@@ -1032,7 +1031,6 @@ function CardTagging({ cardTags, setCardTags, tagDB, setTagDB, cardColors, cardT
             </div>
           </div>
         </>
-      )}
 
       <div style={{ ...section, marginBottom: 0 }}>
         <div style={sectionTitle}>Assign to Guild</div>
