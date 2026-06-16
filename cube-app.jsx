@@ -4620,6 +4620,206 @@ function ArchetypesAnalysisPage({ cards, db }) {
 }
 
 
+function ArchetypesAnalysisWrapper({ cards, db }) {
+  const [archTab, setArchTab] = React.useState("main");
+  return (
+    <div>
+      <div style={{ display:"flex", gap:"1px", borderBottom:"1px solid #222", backgroundColor:"#0d0d0d", paddingLeft:"24px" }}>
+        {[["main","Main Archetypes"],["tribal","Tribal Archetypes"],["support","Support"]].map(([t,label]) => (
+          <div key={t} onClick={() => setArchTab(t)} style={archTab===t
+            ? { padding:"8px 20px", cursor:"pointer", fontSize:"13px", color:"#fff", borderBottom:"2px solid #d4af37", fontWeight:"600" }
+            : { padding:"8px 20px", cursor:"pointer", fontSize:"13px", color:"#aaa", borderBottom:"2px solid transparent" }}>
+            {label}
+          </div>
+        ))}
+      </div>
+      {archTab === "main"    && <ArchetypesAnalysisPage cards={cards} db={db} />}
+      {archTab === "tribal"  && <TribalAnalysisPage     cards={cards} db={db} />}
+      {archTab === "support" && <div style={S.page}><div style={{ color:"#555", fontSize:"13px" }}>Coming soon.</div></div>}
+    </div>
+  );
+}
+
+function TribalAnalysisPage({ cards, db }) {
+  const total        = cards.length || 1;
+  const archPerGuild = MAIN_ARCH_PER_GUILD[db.size] || 2;
+
+  const allData = PREDEFINED_TRIBAL_ARCHETYPES.map(a => {
+    const nameLC     = a.name.toLowerCase();
+    const ratio      = parseFloat(a.ratio) / 100 || 0.15;
+    const targetN    = Math.round(total * ratio);
+    const activeCards  = cards.filter(c => (c.tags?.tribal_archetype||[]).some(t => t.toLowerCase()===nameLC));
+    const supportCards = cards.filter(c => (c.tags?.tribal_archetype_support||[]).some(t => t.toLowerCase()===nameLC));
+    const guildData  = GUILDS_LIST.map(g => ({
+      guild:   g.name,
+      active:  activeCards.filter(c => c.tags?.guild === g.name).length,
+      support: supportCards.filter(c => c.tags?.guild === g.name).length,
+    }));
+    return { name:a.name, ratio, targetN, activeCount:activeCards.length, supportCount:supportCards.length, guildData };
+  }).filter(a => a.activeCount + a.supportCount > 0)
+    .sort((a,b) => b.activeCount - a.activeCount || b.supportCount - a.supportCount);
+
+  const maxDot = Math.max(1, ...allData.flatMap(a => a.guildData.map(g => g.active)));
+  const DOT_MAX = 12;
+
+  const threshold4 = (n, target) => {
+    if (target === 0) return "#4a9d5a";
+    const pct  = n / total * 100;
+    const tpct = target / total * 100;
+    if (pct === 0)           return "#555";
+    if (pct < tpct * 0.5)   return "#d94a4a";
+    if (pct < tpct)         return "#c8a000";
+    if (pct <= tpct * 1.25) return "#4a9d5a";
+    return "#4a90d9";
+  };
+
+  const CountCell = ({ count, target }) => {
+    const color = threshold4(count, target);
+    return (
+      <td style={{ ...S.td(), textAlign:"center", padding:"6px 4px", whiteSpace:"nowrap" }}>
+        <span style={{ fontSize:"13px", fontWeight:"700", color }}>{count}</span>
+        <span style={{ fontSize:"11px", color:"#ccc", marginLeft:"2px" }}>/{target}</span>
+      </td>
+    );
+  };
+
+  // Per-guild top tribal archetypes
+  const guildMatrix = GUILDS_LIST.map(g => {
+    const ranked = allData
+      .map(a => {
+        const gd = a.guildData.find(x => x.guild === g.name);
+        return { name:a.name, targetN:a.targetN, guildActive: gd?.active||0 };
+      })
+      .filter(a => a.guildActive > 0)
+      .sort((a,b) => b.guildActive - a.guildActive);
+    return { guild:g.name, colors:g.colors, slots: ranked.slice(0, archPerGuild) };
+  });
+
+  const cols = Array.from({ length: archPerGuild }, (_, i) => `Tribal Archetype ${i+1}`);
+
+  return (
+    <div style={{ ...S.page, maxWidth:"960px" }}>
+      {/* Box 1: Tribal per guild */}
+      <div style={S.box}>
+        <div style={S.boxTitle}>Tribal archetypes per guild</div>
+        <div style={{ overflowX:"auto" }}>
+          <table style={{ borderCollapse:"collapse", width:"100%" }}>
+            <thead>
+              <tr>
+                <th style={{ ...S.th, textAlign:"left", minWidth:"100px", padding:"8px 12px" }}>Guild</th>
+                {cols.map(c => (
+                  <th key={c} style={{ ...S.th, textAlign:"center", padding:"8px 12px", minWidth:"160px" }}>{c}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {guildMatrix.map((g, idx) => (
+                <tr key={g.guild} style={{ backgroundColor: idx%2===0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                  <td style={{ ...S.td(), padding:"10px 12px" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:"4px" }}>
+                      {g.colors.split("").map(c => <ManaIcon key={c} c={c} size={14} />)}
+                      <span style={{ fontSize:"11px", color:"#ccc", marginLeft:"4px" }}>{g.guild}</span>
+                    </div>
+                  </td>
+                  {cols.map((_, i) => {
+                    const slot = g.slots[i];
+                    if (!slot) return (
+                      <td key={i} style={{ ...S.td(), textAlign:"center", padding:"10px 12px" }}>
+                        <span style={{ fontSize:"11px", color:"#333" }}>—</span>
+                      </td>
+                    );
+                    const archData    = allData.find(a => a.name === slot.name);
+                    const cubeActive  = archData?.activeCount  || 0;
+                    const cubeSupport = archData?.supportCount || 0;
+                    const targetN     = archData?.targetN      || 0;
+                    return (
+                      <td key={i} style={{ ...S.td(), padding:"10px 12px", verticalAlign:"top" }}>
+                        <div style={{ fontSize:"12px", color:"#fff", fontWeight:"600", marginBottom:"6px" }}>{slot.name}</div>
+                        <div style={{ display:"flex", gap:"16px" }}>
+                          <div>
+                            <div style={{ fontSize:"9px", color:"#444", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"2px" }}>Active</div>
+                            <span style={{ fontSize:"13px", fontWeight:"700", color:threshold4(cubeActive, targetN) }}>{cubeActive}</span>
+                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{targetN}</span>
+                          </div>
+                          <div>
+                            <div style={{ fontSize:"9px", color:"#444", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"2px" }}>Support</div>
+                            <span style={{ fontSize:"13px", fontWeight:"700", color:threshold4(cubeSupport, targetN) }}>{cubeSupport}</span>
+                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{targetN}</span>
+                          </div>
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Box 2: All tribal archetypes */}
+      <div style={S.box}>
+        <div style={S.boxTitle}>All tribal archetypes</div>
+        <div style={{ display:"flex", gap:"16px", marginBottom:"16px", flexWrap:"wrap" }}>
+          <span style={{ fontSize:"11px", color:"#d94a4a" }}>■ &lt; 50% of target</span>
+          <span style={{ fontSize:"11px", color:"#c8a000" }}>■ 50–100% of target</span>
+          <span style={{ fontSize:"11px", color:"#4a9d5a" }}>■ 100–125% of target</span>
+          <span style={{ fontSize:"11px", color:"#4a90d9" }}>■ &gt; 125% of target</span>
+        </div>
+        {allData.length === 0 ? (
+          <div style={{ color:"#555", fontSize:"13px" }}>No tribal archetypes with tagged cards found.</div>
+        ) : (
+          <div style={{ overflowX:"auto" }}>
+            <table style={{ borderCollapse:"collapse", width:"100%" }}>
+              <thead>
+                <tr>
+                  <th style={{ ...S.th, textAlign:"left", minWidth:"130px", position:"sticky", left:0, backgroundColor:"#111", zIndex:2, padding:"8px 12px", fontSize:"10px" }}>Tribal</th>
+                  <th style={{ ...S.th, textAlign:"center", minWidth:"64px", padding:"8px 4px", fontSize:"10px" }}>Active</th>
+                  <th style={{ ...S.th, textAlign:"center", minWidth:"64px", padding:"8px 4px", fontSize:"10px" }}>Support</th>
+                  {GUILDS_LIST.map(g => (
+                    <th key={g.name} style={{ ...S.th, textAlign:"center", width:"40px", minWidth:"40px", padding:"6px 2px" }}>
+                      <div style={{ display:"flex", justifyContent:"center", gap:"1px" }}>
+                        {g.colors.split("").map(c => <ManaIcon key={c} c={c} size={11} />)}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {allData.map((a, idx) => (
+                  <tr key={a.name} style={{ backgroundColor: idx%2===0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                    <td style={{ ...S.td(), position:"sticky", left:0, backgroundColor: idx%2===0 ? "#111" : "#161616", zIndex:1, fontSize:"12px", color:"#ccc", padding:"10px 12px", whiteSpace:"nowrap" }}>
+                      {a.name}
+                    </td>
+                    <CountCell count={a.activeCount}  target={a.targetN} />
+                    <CountCell count={a.supportCount} target={a.targetN} />
+                    {a.guildData.map(g => {
+                      const r = g.active === 0 ? 0 : Math.max(3, Math.round((g.active / maxDot) * DOT_MAX));
+                      const cellSize = DOT_MAX * 2 + 8;
+                      return (
+                        <td key={g.guild} style={{ ...S.td(), textAlign:"center", padding:"2px", verticalAlign:"middle" }}>
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:`${cellSize}px` }}
+                            title={g.active > 0 ? `${g.guild}: ${g.active}` : ""}>
+                            {g.active > 0 && (
+                              <svg width={cellSize} height={cellSize} viewBox={`0 0 ${cellSize} ${cellSize}`} style={{ display:"block" }}>
+                                <circle cx={cellSize/2} cy={cellSize/2} r={r} fill="rgba(255,255,255,0.85)" />
+                              </svg>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ArchetypesPage({ cards, db, tagDB }) {
   const guilds = GUILDS_LIST.map(g => g.name);
   const specials = [
@@ -5502,7 +5702,7 @@ function App() {
       {active === "Build" && buildTab === "Archetypes" && <TagsTuningPage tagDB={tagDB} setTagDB={setTagDB} cards={cards} onUpdateCard={updateCard} />}
       {active === "Analyze" && analysisTab === "Cube"        && <CubeAnalysisPage cards={cards.filter(c => !c.tags?.maybe_board)} db={db} tagDB={tagDB} />}
       {active === "Analyze" && analysisTab === "Guilds"      && <div style={S.page}><div style={{ color:"#555", fontSize:"13px" }}>Coming soon.</div></div>}
-      {active === "Analyze" && analysisTab === "Archetypes"  && <ArchetypesAnalysisPage cards={cards.filter(c => !c.tags?.maybe_board)} db={db} />}
+      {active === "Analyze" && analysisTab === "Archetypes"  && <ArchetypesAnalysisWrapper cards={cards.filter(c => !c.tags?.maybe_board)} db={db} />}
       {active === "Reference" && <ReferencePage />}
     </div>
     </div>
