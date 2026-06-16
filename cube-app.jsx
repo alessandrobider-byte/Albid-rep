@@ -3854,34 +3854,34 @@ const PREDEFINED_MAIN_ARCHETYPES = [
 ];
 
 const PREDEFINED_TRIBAL_ARCHETYPES = [
-  { name:"Angels", desc:"Large flying finishers with powerful ETB and static abilities. Reward going tall with big threats.", ratio:"15%" },
-  { name:"Beasts", desc:"Large aggressive creatures that reward ramp and stompy strategies. Often have trample or enters-the-battlefield value.", ratio:"15%" },
-  { name:"Birds", desc:"Small evasive creatures with flying that reward going wide in the air. Synergize with Skies/Flying payoffs.", ratio:"15%" },
-  { name:"Cats", desc:"Aggressive creatures with lifelink and combat abilities. Synergize with lifegain payoffs.", ratio:"15%" },
-  { name:"Clerics", desc:"Value-oriented tribe with lifegain triggers and sacrifice synergies. Rewards building around death and devotion.", ratio:"15%" },
-  { name:"Demons", desc:"Powerful high-CMC threats with drawbacks that reward build-around strategies. Often synergize with sacrifice.", ratio:"15%" },
-  { name:"Dragons", desc:"Large flying threats with ETB damage and tribal payoffs. Reward ramp strategies and going tall.", ratio:"15%" },
-  { name:"Druids", desc:"Mana-generating creatures that accelerate into large threats. Reward ramp and lands strategies.", ratio:"15%" },
-  { name:"Elementals", desc:"Versatile tribe spanning multiple colors with ETB effects and elemental synergies.", ratio:"15%" },
-  { name:"Elves", desc:"Explosive mana generation and wide board presence. Reward critical mass strategies and Overrun effects.", ratio:"15%" },
-  { name:"Faeries", desc:"Flash and flying creatures that reward holding up mana. Synergize with instant-speed play and tempo.", ratio:"15%" },
-  { name:"Goblins", desc:"Fast aggressive tribe with sacrifice synergies and explosive combo potential.", ratio:"15%" },
-  { name:"Humans", desc:"Aggressive tribe with lords and hate bears. Reward going wide and disrupting the opponent.", ratio:"15%" },
-  { name:"Insects", desc:"Aggressive creatures with deathtouch and proliferate synergies. Often synergize with -1/-1 counters.", ratio:"15%" },
-  { name:"Knights", desc:"Aggressive creatures with first strike and vigilance. Reward going wide with cavalry-style strategies.", ratio:"15%" },
-  { name:"Merfolk", desc:"Evasive tempo-oriented tribe with lords that buff each other. Reward going wide in blue.", ratio:"15%" },
-  { name:"Rogues", desc:"Evasive creatures that reward mill and hand disruption strategies. Trigger off opponents having cards in graveyard.", ratio:"15%" },
-  { name:"Shamans", desc:"Value-generating creatures tied to spellcasting and land play. Synergize with Spellslinger and Landfall.", ratio:"15%" },
-  { name:"Slivers", desc:"Each Sliver gives all Slivers an ability -- exponentially powerful with critical mass. Requires 5-color support.", ratio:"15%" },
-  { name:"Snakes", desc:"Synergistic tribe with deathtouch and -1/-1 counter interactions.", ratio:"15%" },
-  { name:"Soldiers", desc:"Aggressive white tribe with lords and combat tricks. Reward going wide and attacking every turn.", ratio:"15%" },
-  { name:"Spirits", desc:"Flash and flying tribe with tempo and graveyard synergies. Reward instant-speed play and sacrifice.", ratio:"15%" },
-  { name:"Vampires", desc:"Aggressive tribe with lifelink and drain synergies. Reward going wide and exploiting lifegain payoffs.", ratio:"15%" },
-  { name:"Werewolves", desc:"Transform-based tribe that rewards not casting spells. Require a low spell count strategy to stay transformed.", ratio:"15%" },
-  { name:"Wizards", desc:"Spellcasting tribe that rewards casting instants and sorceries. Synergize with Spellslinger and Prowess.", ratio:"15%" },
-  { name:"Zombies", desc:"Recursive tribe that rewards graveyard strategies and sacrifice. Self-regenerating board presence.", ratio:"15%" },
-  { name:"Warriors", desc:"Aggressive tribe with combat-oriented abilities. Reward going wide and attacking each turn with payoffs that trigger on combat.", ratio:"15%" },
-  { name:"Samurai", desc:"Disciplined combat tribe with Bushido and Meifumado mechanics. Reward attacking and blocking with precision, synergizing with legendary and honor-based payoffs.", ratio:"15%" },
+  { name:"Angels", desc:"Large flying finishers with powerful ETB and static abilities. Reward going tall with big threats.", ratio:"2%" },
+  { name:"Beasts", desc:"Large aggressive creatures that reward ramp and stompy strategies. Often have trample or enters-the-battlefield value.", ratio:"2%" },
+  { name:"Birds", desc:"Small evasive creatures with flying that reward going wide in the air. Synergize with Skies/Flying payoffs.", ratio:"2%" },
+  { name:"Cats", desc:"Aggressive creatures with lifelink and combat abilities. Synergize with lifegain payoffs.", ratio:"2%" },
+  { name:"Clerics", desc:"Value-oriented tribe with lifegain triggers and sacrifice synergies. Rewards building around death and devotion.", ratio:"2%" },
+  { name:"Demons", desc:"Powerful high-CMC threats with drawbacks that reward build-around strategies. Often synergize with sacrifice.", ratio:"2%" },
+  { name:"Dragons", desc:"Large flying threats with ETB damage and tribal payoffs. Reward ramp strategies and going tall.", ratio:"2%" },
+  { name:"Druids", desc:"Mana-generating creatures that accelerate into large threats. Reward ramp and lands strategies.", ratio:"2%" },
+  { name:"Elementals", desc:"Versatile tribe spanning multiple colors with ETB effects and elemental synergies.", ratio:"2%" },
+  { name:"Elves", desc:"Explosive mana generation and wide board presence. Reward critical mass strategies and Overrun effects.", ratio:"2%" },
+  { name:"Faeries", desc:"Flash and flying creatures that reward holding up mana. Synergize with instant-speed play and tempo.", ratio:"2%" },
+  { name:"Goblins", desc:"Fast aggressive tribe with sacrifice synergies and explosive combo potential.", ratio:"2%" },
+  { name:"Humans", desc:"Aggressive tribe with lords and hate bears. Reward going wide and disrupting the opponent.", ratio:"2%" },
+  { name:"Insects", desc:"Aggressive creatures with deathtouch and proliferate synergies. Often synergize with -1/-1 counters.", ratio:"2%" },
+  { name:"Knights", desc:"Aggressive creatures with first strike and vigilance. Reward going wide with cavalry-style strategies.", ratio:"2%" },
+  { name:"Merfolk", desc:"Evasive tempo-oriented tribe with lords that buff each other. Reward going wide in blue.", ratio:"2%" },
+  { name:"Rogues", desc:"Evasive creatures that reward mill and hand disruption strategies. Trigger off opponents having cards in graveyard.", ratio:"2%" },
+  { name:"Shamans", desc:"Value-generating creatures tied to spellcasting and land play. Synergize with Spellslinger and Landfall.", ratio:"2%" },
+  { name:"Slivers", desc:"Each Sliver gives all Slivers an ability -- exponentially powerful with critical mass. Requires 5-color support.", ratio:"2%" },
+  { name:"Snakes", desc:"Synergistic tribe with deathtouch and -1/-1 counter interactions.", ratio:"2%" },
+  { name:"Soldiers", desc:"Aggressive white tribe with lords and combat tricks. Reward going wide and attacking every turn.", ratio:"2%" },
+  { name:"Spirits", desc:"Flash and flying tribe with tempo and graveyard synergies. Reward instant-speed play and sacrifice.", ratio:"2%" },
+  { name:"Vampires", desc:"Aggressive tribe with lifelink and drain synergies. Reward going wide and exploiting lifegain payoffs.", ratio:"2%" },
+  { name:"Werewolves", desc:"Transform-based tribe that rewards not casting spells. Require a low spell count strategy to stay transformed.", ratio:"2%" },
+  { name:"Wizards", desc:"Spellcasting tribe that rewards casting instants and sorceries. Synergize with Spellslinger and Prowess.", ratio:"2%" },
+  { name:"Zombies", desc:"Recursive tribe that rewards graveyard strategies and sacrifice. Self-regenerating board presence.", ratio:"2%" },
+  { name:"Warriors", desc:"Aggressive tribe with combat-oriented abilities. Reward going wide and attacking each turn with payoffs that trigger on combat.", ratio:"2%" },
+  { name:"Samurai", desc:"Disciplined combat tribe with Bushido and Meifumado mechanics. Reward attacking and blocking with precision, synergizing with legendary and honor-based payoffs.", ratio:"2%" },
 ];
 
 function ArchetypeDetailModal({ archetype, onClose }) {
@@ -4642,12 +4642,15 @@ function ArchetypesAnalysisWrapper({ cards, db }) {
 
 function TribalAnalysisPage({ cards, db }) {
   const total        = cards.length || 1;
-  const archPerGuild = MAIN_ARCH_PER_GUILD[db.size] || 2;
+  const archPerGuild = TRIBAL_PER_COLOR[db.size] || 1;
+
+  const TRIBAL_ACTIVE_PCT  = 0.03; // 3% — ~11 cards on 360
+  const TRIBAL_SUPPORT_PCT = 0.02; // 2% — ~7 cards on 360
+  const targetActive  = Math.round(total * TRIBAL_ACTIVE_PCT);
+  const targetSupport = Math.round(total * TRIBAL_SUPPORT_PCT);
 
   const allData = PREDEFINED_TRIBAL_ARCHETYPES.map(a => {
     const nameLC     = a.name.toLowerCase();
-    const ratio      = parseFloat(a.ratio) / 100 || 0.15;
-    const targetN    = Math.round(total * ratio);
     const activeCards  = cards.filter(c => (c.tags?.tribal_archetype||[]).some(t => t.toLowerCase()===nameLC));
     const supportCards = cards.filter(c => (c.tags?.tribal_archetype_support||[]).some(t => t.toLowerCase()===nameLC));
     const guildData  = GUILDS_LIST.map(g => ({
@@ -4659,7 +4662,7 @@ function TribalAnalysisPage({ cards, db }) {
       key:    k,
       active: activeCards.filter(c => (c.colors||[]).includes(k)).length,
     }));
-    return { name:a.name, ratio, targetN, activeCount:activeCards.length, supportCount:supportCards.length, guildData, colorData };
+    return { name:a.name, activeCount:activeCards.length, supportCount:supportCards.length, guildData, colorData };
   }).filter(a => a.activeCount + a.supportCount > 0)
     .sort((a,b) => b.activeCount - a.activeCount || b.supportCount - a.supportCount);
 
@@ -4667,6 +4670,15 @@ function TribalAnalysisPage({ cards, db }) {
   const DOT_MAX = 12;
 
   const threshold4 = (n, target) => {
+    if (target === 0) return "#4a9d5a";
+    const pct  = n / total * 100;
+    const tpct = target / total * 100;
+    if (pct === 0)           return "#555";
+    if (pct < tpct * 0.5)   return "#d94a4a";
+    if (pct < tpct)         return "#c8a000";
+    if (pct <= tpct * 1.25) return "#4a9d5a";
+    return "#4a90d9";
+  };
     if (target === 0) return "#4a9d5a";
     const pct  = n / total * 100;
     const tpct = target / total * 100;
@@ -4735,20 +4747,19 @@ function TribalAnalysisPage({ cards, db }) {
                     const archData    = allData.find(a => a.name === slot.name);
                     const cubeActive  = archData?.activeCount  || 0;
                     const cubeSupport = archData?.supportCount || 0;
-                    const targetN     = archData?.targetN      || 0;
                     return (
                       <td key={i} style={{ ...S.td(), padding:"10px 12px", verticalAlign:"top" }}>
                         <div style={{ fontSize:"12px", color:"#fff", fontWeight:"600", marginBottom:"6px" }}>{slot.name}</div>
                         <div style={{ display:"flex", gap:"16px" }}>
                           <div>
                             <div style={{ fontSize:"9px", color:"#444", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"2px" }}>Active</div>
-                            <span style={{ fontSize:"13px", fontWeight:"700", color:threshold4(cubeActive, targetN) }}>{cubeActive}</span>
-                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{targetN}</span>
+                            <span style={{ fontSize:"13px", fontWeight:"700", color:threshold4(cubeActive, targetActive) }}>{cubeActive}</span>
+                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{targetActive}</span>
                           </div>
                           <div>
                             <div style={{ fontSize:"9px", color:"#444", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"2px" }}>Support</div>
-                            <span style={{ fontSize:"13px", fontWeight:"700", color:threshold4(cubeSupport, targetN) }}>{cubeSupport}</span>
-                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{targetN}</span>
+                            <span style={{ fontSize:"13px", fontWeight:"700", color:threshold4(cubeSupport, targetSupport) }}>{cubeSupport}</span>
+                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{targetSupport}</span>
                           </div>
                         </div>
                       </td>
@@ -4795,8 +4806,8 @@ function TribalAnalysisPage({ cards, db }) {
                     <td style={{ ...S.td(), position:"sticky", left:0, backgroundColor: idx%2===0 ? "#111" : "#161616", zIndex:1, fontSize:"12px", color:"#ccc", padding:"10px 12px", whiteSpace:"nowrap" }}>
                       {a.name}
                     </td>
-                    <CountCell count={a.activeCount}  target={a.targetN} />
-                    <CountCell count={a.supportCount} target={a.targetN} />
+                    <CountCell count={a.activeCount}  target={targetActive} />
+                    <CountCell count={a.supportCount} target={targetSupport} />
                     {a.colorData.map(col => {
                       const r = col.active === 0 ? 0 : Math.max(3, Math.round((col.active / maxDot) * DOT_MAX));
                       const cellSize = DOT_MAX * 2 + 8;
