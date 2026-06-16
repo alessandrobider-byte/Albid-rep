@@ -4679,15 +4679,6 @@ function TribalAnalysisPage({ cards, db }) {
     if (pct <= tpct * 1.25) return "#4a9d5a";
     return "#4a90d9";
   };
-    if (target === 0) return "#4a9d5a";
-    const pct  = n / total * 100;
-    const tpct = target / total * 100;
-    if (pct === 0)           return "#555";
-    if (pct < tpct * 0.5)   return "#d94a4a";
-    if (pct < tpct)         return "#c8a000";
-    if (pct <= tpct * 1.25) return "#4a9d5a";
-    return "#4a90d9";
-  };
 
   const CountCell = ({ count, target }) => {
     const color = threshold4(count, target);
