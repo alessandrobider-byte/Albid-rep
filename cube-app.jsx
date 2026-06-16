@@ -4704,7 +4704,7 @@ function TribalAnalysisPage({ cards, db }) {
     const ranked = allData
       .map(a => {
         const gd = a.guildData.find(x => x.guild === g.name);
-        return { name:a.name, targetN:a.targetN, guildActive: gd?.active||0 };
+        return { name:a.name, guildActive: gd?.active||0 };
       })
       .filter(a => a.guildActive > 0)
       .sort((a,b) => b.guildActive - a.guildActive);
