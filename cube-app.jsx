@@ -4452,25 +4452,34 @@ function ArchetypesAnalysisPage({ cards, db }) {
   const maxDot = Math.max(1, ...data.flatMap(a => a.guildData.map(g => g.active)));
   const DOT_MAX = 12;
 
-  const activeColor  = n => n >= targetActive ? "#4a9d5a" : n > 0 ? "#d94a4a" : "#555";
-  const supportColor = (n, noSupport, targetSup) => {
-    if (noSupport) return "#4a9d5a";
-    return n >= targetSup ? "#4a9d5a" : n > 0 ? "#d94a4a" : "#555";
+  const threshold4 = (n, target) => {
+    if (target === 0) return "#4a9d5a"; // autonomous — always green
+    const pct = n / total * 100;
+    const tpct = target / total * 100;
+    if (pct === 0)          return "#555";
+    if (pct < tpct * 0.5)  return "#d94a4a";  // < 50% of target → red
+    if (pct < tpct)        return "#c8a000";   // 50–100% of target → yellow
+    if (pct <= tpct * 1.25) return "#4a9d5a";  // 100–125% of target → green
+    return "#4a90d9";                           // > 125% of target → blue
   };
 
-  const CountCell = ({ count, target, color }) => (
-    <td style={{ ...S.td(), textAlign:"center", padding:"6px 4px", whiteSpace:"nowrap" }}>
-      <span style={{ fontSize:"13px", fontWeight:"700", color }}>{count}</span>
-      <span style={{ fontSize:"11px", color:"#444", marginLeft:"2px" }}>/{target}</span>
-    </td>
-  );
+  const CountCell = ({ count, target, noSupport }) => {
+    const color = noSupport ? "#4a9d5a" : threshold4(count, target);
+    return (
+      <td style={{ ...S.td(), textAlign:"center", padding:"6px 4px", whiteSpace:"nowrap" }}>
+        <span style={{ fontSize:"13px", fontWeight:"700", color }}>{count}</span>
+        <span style={{ fontSize:"11px", color:"#444", marginLeft:"2px" }}>/{target}</span>
+      </td>
+    );
+  };
 
   return (
     <div style={{ ...S.page, maxWidth:"960px" }}>
       <div style={{ display:"flex", gap:"16px", marginBottom:"20px", flexWrap:"wrap" }}>
-        <span style={{ fontSize:"11px", color:"#4a9d5a" }}>■ at/above threshold</span>
-        <span style={{ fontSize:"11px", color:"#d94a4a" }}>■ below threshold</span>
-        <span style={{ fontSize:"11px", color:"#4a9d5a" }}>■ autonomous</span>
+        <span style={{ fontSize:"11px", color:"#d94a4a" }}>■ &lt; 50% of target</span>
+        <span style={{ fontSize:"11px", color:"#c8a000" }}>■ 50–100% of target</span>
+        <span style={{ fontSize:"11px", color:"#4a9d5a" }}>■ 100–125% of target</span>
+        <span style={{ fontSize:"11px", color:"#4a90d9" }}>■ &gt; 125% of target</span>
       </div>
 
       {data.length === 0 ? (
@@ -4498,13 +4507,8 @@ function ArchetypesAnalysisPage({ cards, db }) {
                   <td style={{ ...S.td(), position:"sticky", left:0, backgroundColor: idx%2===0 ? "#0d0d0d" : "#111", zIndex:1, fontSize:"12px", color:"#ccc", padding:"10px 12px", whiteSpace:"nowrap" }}>
                     {a.name}
                   </td>
-                  <CountCell count={a.activeCount} target={targetActive} color={activeColor(a.activeCount)} />
-                  {a.noSupport
-                    ? <td style={{ ...S.td(), textAlign:"center", padding:"6px 4px" }}>
-                        <span style={{ fontSize:"10px", color:"#4a9d5a" }}>autonomous</span>
-                      </td>
-                    : <CountCell count={a.supportCount} target={a.targetSup} color={supportColor(a.supportCount, false, a.targetSup)} />
-                  }
+                  <CountCell count={a.activeCount} target={targetActive} noSupport={false} />
+                  <CountCell count={a.supportCount} target={a.targetSup} noSupport={a.noSupport} />
                   {a.guildData.map(g => {
                     const r = g.active === 0 ? 0 : Math.max(3, Math.round((g.active / maxDot) * DOT_MAX));
                     const cellSize = DOT_MAX * 2 + 8;
