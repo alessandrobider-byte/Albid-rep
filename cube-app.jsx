@@ -4655,11 +4655,15 @@ function TribalAnalysisPage({ cards, db }) {
       active:  activeCards.filter(c => c.tags?.guild === g.name).length,
       support: supportCards.filter(c => c.tags?.guild === g.name).length,
     }));
-    return { name:a.name, ratio, targetN, activeCount:activeCards.length, supportCount:supportCards.length, guildData };
+    const colorData  = COLOR_KEYS.map(k => ({
+      key:    k,
+      active: activeCards.filter(c => (c.colors||[]).includes(k)).length,
+    }));
+    return { name:a.name, ratio, targetN, activeCount:activeCards.length, supportCount:supportCards.length, guildData, colorData };
   }).filter(a => a.activeCount + a.supportCount > 0)
     .sort((a,b) => b.activeCount - a.activeCount || b.supportCount - a.supportCount);
 
-  const maxDot = Math.max(1, ...allData.flatMap(a => a.guildData.map(g => g.active)));
+  const maxDot = Math.max(1, ...allData.flatMap(a => a.colorData.map(c => c.active)));
   const DOT_MAX = 12;
 
   const threshold4 = (n, target) => {
@@ -4776,10 +4780,10 @@ function TribalAnalysisPage({ cards, db }) {
                   <th style={{ ...S.th, textAlign:"left", minWidth:"130px", position:"sticky", left:0, backgroundColor:"#111", zIndex:2, padding:"8px 12px", fontSize:"10px" }}>Tribal</th>
                   <th style={{ ...S.th, textAlign:"center", minWidth:"64px", padding:"8px 4px", fontSize:"10px" }}>Active</th>
                   <th style={{ ...S.th, textAlign:"center", minWidth:"64px", padding:"8px 4px", fontSize:"10px" }}>Support</th>
-                  {GUILDS_LIST.map(g => (
-                    <th key={g.name} style={{ ...S.th, textAlign:"center", width:"40px", minWidth:"40px", padding:"6px 2px" }}>
-                      <div style={{ display:"flex", justifyContent:"center", gap:"1px" }}>
-                        {g.colors.split("").map(c => <ManaIcon key={c} c={c} size={11} />)}
+                  {COLOR_KEYS.map(k => (
+                    <th key={k} style={{ ...S.th, textAlign:"center", width:"44px", minWidth:"44px", padding:"6px 2px" }}>
+                      <div style={{ display:"flex", justifyContent:"center" }}>
+                        <ManaIcon c={k} size={14} />
                       </div>
                     </th>
                   ))}
@@ -4793,16 +4797,16 @@ function TribalAnalysisPage({ cards, db }) {
                     </td>
                     <CountCell count={a.activeCount}  target={a.targetN} />
                     <CountCell count={a.supportCount} target={a.targetN} />
-                    {a.guildData.map(g => {
-                      const r = g.active === 0 ? 0 : Math.max(3, Math.round((g.active / maxDot) * DOT_MAX));
+                    {a.colorData.map(col => {
+                      const r = col.active === 0 ? 0 : Math.max(3, Math.round((col.active / maxDot) * DOT_MAX));
                       const cellSize = DOT_MAX * 2 + 8;
                       return (
-                        <td key={g.guild} style={{ ...S.td(), textAlign:"center", padding:"2px", verticalAlign:"middle" }}>
+                        <td key={col.key} style={{ ...S.td(), textAlign:"center", padding:"2px", verticalAlign:"middle" }}>
                           <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:`${cellSize}px` }}
-                            title={g.active > 0 ? `${g.guild}: ${g.active}` : ""}>
-                            {g.active > 0 && (
+                            title={col.active > 0 ? `${COLOR_NAMES[col.key]}: ${col.active}` : ""}>
+                            {col.active > 0 && (
                               <svg width={cellSize} height={cellSize} viewBox={`0 0 ${cellSize} ${cellSize}`} style={{ display:"block" }}>
-                                <circle cx={cellSize/2} cy={cellSize/2} r={r} fill="rgba(255,255,255,0.85)" />
+                                <circle cx={cellSize/2} cy={cellSize/2} r={r} fill={COLOR_HEX[col.key] || "#fff"} opacity="0.85" />
                               </svg>
                             )}
                           </div>
