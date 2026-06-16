@@ -4513,7 +4513,7 @@ function ArchetypesAnalysisPage({ cards, db }) {
                   <td style={{ ...S.td(), padding:"10px 12px" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"4px" }}>
                       {g.colors.split("").map(c => <ManaIcon key={c} c={c} size={14} />)}
-                      <span style={{ fontSize:"11px", color:"#555", marginLeft:"4px" }}>{g.guild}</span>
+                      <span style={{ fontSize:"11px", color:"#ccc", marginLeft:"4px" }}>{g.guild}</span>
                     </div>
                   </td>
                   {cols.map((_, i) => {
@@ -4523,21 +4523,27 @@ function ArchetypesAnalysisPage({ cards, db }) {
                         <span style={{ fontSize:"11px", color:"#333" }}>—</span>
                       </td>
                     );
-                    const activeColor  = threshold4(slot.active, targetActive);
-                    const supportColor = slot.noSupport ? "#4a9d5a" : threshold4(slot.support, slot.targetSup);
+                    // Use cube-wide totals from allData (same as All Archetypes table)
+                    const archData     = allData.find(a => a.name === slot.name);
+                    const cubeActive   = archData?.activeCount  || 0;
+                    const cubeSupport  = archData?.supportCount || 0;
+                    const cubeTarget   = archData?.targetSup    || 0;
+                    const noSupport    = archData?.noSupport    || false;
+                    const activeColor  = threshold4(cubeActive, targetActive);
+                    const supportColor = noSupport ? "#4a9d5a" : threshold4(cubeSupport, cubeTarget);
                     return (
                       <td key={i} style={{ ...S.td(), padding:"10px 12px", verticalAlign:"top" }}>
                         <div style={{ fontSize:"12px", color:"#fff", fontWeight:"600", marginBottom:"6px" }}>{slot.name}</div>
                         <div style={{ display:"flex", gap:"16px" }}>
                           <div>
                             <div style={{ fontSize:"9px", color:"#444", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"2px" }}>Active</div>
-                            <span style={{ fontSize:"13px", fontWeight:"700", color:activeColor }}>{slot.active}</span>
+                            <span style={{ fontSize:"13px", fontWeight:"700", color:activeColor }}>{cubeActive}</span>
                             <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{targetActive}</span>
                           </div>
                           <div>
                             <div style={{ fontSize:"9px", color:"#444", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"2px" }}>Support</div>
-                            <span style={{ fontSize:"13px", fontWeight:"700", color:supportColor }}>{slot.support}</span>
-                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{slot.noSupport ? 0 : slot.targetSup}</span>
+                            <span style={{ fontSize:"13px", fontWeight:"700", color:supportColor }}>{cubeSupport}</span>
+                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{noSupport ? 0 : cubeTarget}</span>
                           </div>
                         </div>
                       </td>
