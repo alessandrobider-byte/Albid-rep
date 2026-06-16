@@ -4468,7 +4468,7 @@ function ArchetypesAnalysisPage({ cards, db }) {
     return (
       <td style={{ ...S.td(), textAlign:"center", padding:"6px 4px", whiteSpace:"nowrap" }}>
         <span style={{ fontSize:"13px", fontWeight:"700", color }}>{count}</span>
-        <span style={{ fontSize:"11px", color:"#444", marginLeft:"2px" }}>/{target}</span>
+        <span style={{ fontSize:"11px", color:"#ccc", marginLeft:"2px" }}>/{target}</span>
       </td>
     );
   };
