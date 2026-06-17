@@ -1,5 +1,5 @@
 const { useState, useEffect, useRef } = React;
-// test
+
 // ─── STORAGE ABSTRACTION ─────────────────────────────────────────────────────
 // Swap this implementation for Firebase later without touching the rest of the app
 
@@ -4642,12 +4642,15 @@ function ArchetypesAnalysisWrapper({ cards, db }) {
 
 function TribalAnalysisPage({ cards, db }) {
   const total        = cards.length || 1;
-  const archPerGuild = MAIN_ARCH_PER_GUILD[db.size] || 2;
+  const archPerGuild = TRIBAL_PER_COLOR[db.size] || 1;
+
+  const TRIBAL_ACTIVE_PCT  = 0.02;
+  const TRIBAL_SUPPORT_PCT = 0.03;
+  const targetActive  = Math.round(total * TRIBAL_ACTIVE_PCT);
+  const targetSupport = Math.round(total * TRIBAL_SUPPORT_PCT);
 
   const allData = PREDEFINED_TRIBAL_ARCHETYPES.map(a => {
     const nameLC     = a.name.toLowerCase();
-    const ratio      = parseFloat(a.ratio) / 100 || 0.15;
-    const targetN    = Math.round(total * ratio);
     const activeCards  = cards.filter(c => (c.tags?.tribal_archetype||[]).some(t => t.toLowerCase()===nameLC));
     const supportCards = cards.filter(c => (c.tags?.tribal_archetype_support||[]).some(t => t.toLowerCase()===nameLC));
     const guildData  = GUILDS_LIST.map(g => ({
@@ -4659,7 +4662,7 @@ function TribalAnalysisPage({ cards, db }) {
       key:    k,
       active: activeCards.filter(c => (c.colors||[]).includes(k)).length,
     }));
-    return { name:a.name, ratio, targetN, activeCount:activeCards.length, supportCount:supportCards.length, guildData, colorData };
+    return { name:a.name, activeCount:activeCards.length, supportCount:supportCards.length, guildData, colorData };
   }).filter(a => a.activeCount + a.supportCount > 0)
     .sort((a,b) => b.activeCount - a.activeCount || b.supportCount - a.supportCount);
 
@@ -4692,14 +4695,14 @@ function TribalAnalysisPage({ cards, db }) {
     const ranked = allData
       .map(a => {
         const gd = a.guildData.find(x => x.guild === g.name);
-        return { name:a.name, targetN:a.targetN, guildActive: gd?.active||0 };
+        return { name:a.name, guildActive: gd ? gd.active : 0 };
       })
       .filter(a => a.guildActive > 0)
       .sort((a,b) => b.guildActive - a.guildActive);
     return { guild:g.name, colors:g.colors, slots: ranked.slice(0, archPerGuild) };
   });
 
-  const cols = Array.from({ length: archPerGuild }, (_, i) => `Tribal Archetype ${i+1}`);
+  const cols = Array.from({ length: archPerGuild }, (_, i) => 'Tribal Archetype ' + (i + 1));
 
   return (
     <div style={{ ...S.page, maxWidth:"960px" }}>
@@ -4735,20 +4738,19 @@ function TribalAnalysisPage({ cards, db }) {
                     const archData    = allData.find(a => a.name === slot.name);
                     const cubeActive  = archData?.activeCount  || 0;
                     const cubeSupport = archData?.supportCount || 0;
-                    const targetN     = archData?.targetN      || 0;
                     return (
                       <td key={i} style={{ ...S.td(), padding:"10px 12px", verticalAlign:"top" }}>
                         <div style={{ fontSize:"12px", color:"#fff", fontWeight:"600", marginBottom:"6px" }}>{slot.name}</div>
                         <div style={{ display:"flex", gap:"16px" }}>
                           <div>
                             <div style={{ fontSize:"9px", color:"#444", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"2px" }}>Active</div>
-                            <span style={{ fontSize:"13px", fontWeight:"700", color:threshold4(cubeActive, targetN) }}>{cubeActive}</span>
-                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{targetN}</span>
+                            <span style={{ fontSize:"13px", fontWeight:"700", color:threshold4(cubeActive, targetActive) }}>{cubeActive}</span>
+                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{targetActive}</span>
                           </div>
                           <div>
                             <div style={{ fontSize:"9px", color:"#444", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"2px" }}>Support</div>
-                            <span style={{ fontSize:"13px", fontWeight:"700", color:threshold4(cubeSupport, targetN) }}>{cubeSupport}</span>
-                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{targetN}</span>
+                            <span style={{ fontSize:"13px", fontWeight:"700", color:threshold4(cubeSupport, targetSupport) }}>{cubeSupport}</span>
+                            <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{targetSupport}</span>
                           </div>
                         </div>
                       </td>
@@ -4795,8 +4797,8 @@ function TribalAnalysisPage({ cards, db }) {
                     <td style={{ ...S.td(), position:"sticky", left:0, backgroundColor: idx%2===0 ? "#111" : "#161616", zIndex:1, fontSize:"12px", color:"#ccc", padding:"10px 12px", whiteSpace:"nowrap" }}>
                       {a.name}
                     </td>
-                    <CountCell count={a.activeCount}  target={a.targetN} />
-                    <CountCell count={a.supportCount} target={a.targetN} />
+                    <CountCell count={a.activeCount}  target={targetActive} />
+                    <CountCell count={a.supportCount} target={targetSupport} />
                     {a.colorData.map(col => {
                       const r = col.active === 0 ? 0 : Math.max(3, Math.round((col.active / maxDot) * DOT_MAX));
                       const cellSize = DOT_MAX * 2 + 8;
