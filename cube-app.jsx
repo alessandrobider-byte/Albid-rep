@@ -4735,6 +4735,100 @@ function SupportAnalysisPage({ cards, db }) {
           );
         })}
       </div>
+      {/* Box 2: Utility breakdown by category */}
+      <UtilityBreakdownBox cards={cards} />
+    </div>
+  );
+}
+
+function UtilityBreakdownBox({ cards }) {
+  const categories = [...new Set(UTILITY_DATA.map(d => d.cat))].sort();
+  const [selectedCat, setSelectedCat] = React.useState(categories[0] || "");
+
+  const subs = UTILITY_DATA.filter(d => d.cat === selectedCat);
+  const subCounts = subs.map(d => ({
+    sub:   d.sub,
+    count: cards.filter(c => (c.tags?.utility||[]).some(u => u.toLowerCase() === d.sub.toLowerCase())).length,
+  })).filter(s => s.count > 0).sort((a,b) => b.count - a.count);
+
+  const total = subCounts.reduce((s, x) => s + x.count, 0);
+
+  // Pie chart colors
+  const PIE_COLORS = ["#4a90d9","#4a9d5a","#c8a000","#d94a4a","#7a5fa0","#4a8a8a","#c87840","#8a4a90","#5a7a3a","#d94a90"];
+
+  // SVG pie chart
+  const PieChart = ({ data, size = 160 }) => {
+    if (!data.length) return <div style={{width:size,height:size,display:"flex",alignItems:"center",justifyContent:"center",color:"#333",fontSize:"12px"}}>No data</div>;
+    const cx = size/2, cy = size/2, r = size/2 - 8;
+    let angle = -Math.PI/2;
+    const slices = data.map((d, i) => {
+      const pct   = d.count / total;
+      const start = angle;
+      angle      += pct * Math.PI * 2;
+      const end   = angle;
+      const x1 = cx + r * Math.cos(start);
+      const y1 = cy + r * Math.sin(start);
+      const x2 = cx + r * Math.cos(end);
+      const y2 = cy + r * Math.sin(end);
+      const large = pct > 0.5 ? 1 : 0;
+      const path = total === d.count
+        ? "M " + cx + " " + cy + " m -" + r + " 0 a " + r + " " + r + " 0 1 0 " + (r*2) + " 0 a " + r + " " + r + " 0 1 0 -" + (r*2) + " 0"
+        : "M " + cx + " " + cy + " L " + x1 + " " + y1 + " A " + r + " " + r + " 0 " + large + " 1 " + x2 + " " + y2 + " Z";
+      return { path, color: PIE_COLORS[i % PIE_COLORS.length], sub: d.sub, count: d.count, pct };
+    });
+    return (
+      <svg width={size} height={size} viewBox={"0 0 " + size + " " + size}>
+        {slices.map((s, i) => (
+          <path key={i} d={s.path} fill={s.color} opacity="0.85" stroke="#0d0d0d" strokeWidth="1">
+            <title>{s.sub + ": " + s.count + " (" + Math.round(s.pct*100) + "%)"}</title>
+          </path>
+        ))}
+      </svg>
+    );
+  };
+
+  return (
+    <div style={S.box}>
+      <div style={{ display:"flex", alignItems:"center", gap:"16px", marginBottom:"20px" }}>
+        <div style={S.boxTitle}>Utility breakdown</div>
+        <select
+          value={selectedCat}
+          onChange={e => setSelectedCat(e.target.value)}
+          style={{ ...S.input, fontSize:"12px", padding:"4px 10px", cursor:"pointer", width:"auto" }}
+        >
+          {categories.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+      </div>
+
+      {subCounts.length === 0 ? (
+        <div style={{ color:"#555", fontSize:"13px" }}>No cards tagged in this category.</div>
+      ) : (
+        <div style={{ display:"flex", gap:"32px", alignItems:"flex-start" }}>
+          {/* Pie chart */}
+          <div style={{ flexShrink:0 }}>
+            <PieChart data={subCounts} size={180} />
+            <div style={{ fontSize:"11px", color:"#555", textAlign:"center", marginTop:"8px" }}>
+              {total} cards total
+            </div>
+          </div>
+
+          {/* Subcategory list */}
+          <div style={{ flex:1 }}>
+            {subCounts.map((s, i) => (
+              <div key={s.sub} style={{ display:"flex", alignItems:"center", gap:"10px", padding:"7px 0", borderBottom:"1px solid #1a1a1a" }}>
+                <div style={{ width:"10px", height:"10px", borderRadius:"2px", backgroundColor: PIE_COLORS[i % PIE_COLORS.length], flexShrink:0 }} />
+                <div style={{ flex:1, fontSize:"12px", color:"#ccc" }}>{s.sub}</div>
+                <div style={{ fontSize:"14px", fontWeight:"700", color:"#fff" }}>{s.count}</div>
+                <div style={{ fontSize:"11px", color:"#555", width:"36px", textAlign:"right" }}>
+                  {Math.round(s.count/total*100)}%
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
