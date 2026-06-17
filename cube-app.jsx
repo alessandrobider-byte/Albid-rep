@@ -1,6 +1,6 @@
 const { useState, useEffect, useRef } = React;
 
-// ─── STORAGE ABSTRACTION ─────────────────────────────────────────────────────
+// ─── STORAGE ABSTRACTION X ─────────────────────────────────────────────────────
 // Swap this implementation for Firebase later without touching the rest of the app
 
 const Storage = {
