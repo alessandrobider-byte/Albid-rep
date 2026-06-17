@@ -4620,6 +4620,125 @@ function ArchetypesAnalysisPage({ cards, db }) {
 }
 
 
+function SupportAnalysisPage({ cards, db }) {
+  const total = cards.length || 1;
+
+  // Compute targets using same logic as computeAdvice
+  const monoPerColor = db.monoPerColor || 0;
+  const perGuild     = monoPerColor / 4;
+  const removalN     = Math.max(1, Math.round(perGuild * (2/12)));  // per color per guild
+  const drawN        = Math.max(1, Math.round(perGuild * (2/12)));  // per color per guild
+  // n per color = removalN * 4 guilds
+  const nPerColor    = removalN * 4;
+  // z = n * 5 colors
+  const zTotal       = nPerColor * 5;
+
+  const cardAdvSubs = UTILITY_DATA.filter(d => d.cat === "Card Advantage").map(d => d.sub.toLowerCase());
+  const removalSubs = UTILITY_DATA.filter(d => d.cat === "Removal").map(d => d.sub.toLowerCase());
+
+  const isCardAdv = c => (c.tags?.utility||[]).some(u => cardAdvSubs.includes(u.toLowerCase()));
+  const isRemoval = c => (c.tags?.utility||[]).some(u => removalSubs.includes(u.toLowerCase()));
+
+  const cols = [
+    ...COLOR_KEYS.map(k => ({
+      key: k,
+      header: <ManaIcon c={k} size={15} />,
+      match: c => (c.colors||[]).length === 1 && (c.colors||[])[0] === k,
+      hasTarget: true,
+    })),
+    {
+      key: "Guild",
+      header: <span style={{fontSize:"10px",color:"#aaa",letterSpacing:"0.06em"}}>Guild</span>,
+      match: c => (c.colors||[]).length === 2,
+      hasTarget: false,
+    },
+    ...(db.colorless > 0 ? [{
+      key: "Colorless",
+      header: <span style={{fontSize:"10px",color:"#666"}}>Clr</span>,
+      match: c => (c.tags?.guild||"").toLowerCase() === "colorless",
+      hasTarget: false,
+    }] : []),
+    ...(db.wildcards > 0 ? [{
+      key: "Wildcards",
+      header: <span style={{fontSize:"10px",color:"#666"}}>Wld</span>,
+      match: c => (c.tags?.guild||"").toLowerCase() === "wildcards",
+      hasTarget: false,
+    }] : []),
+  ];
+
+  const threshold4 = (n, target) => {
+    if (!target) return "#aaa";
+    const pct  = n / total * 100;
+    const tpct = target / total * 100;
+    if (pct === 0)           return "#555";
+    if (pct < tpct * 0.5)   return "#d94a4a";
+    if (pct < tpct)         return "#c8a000";
+    if (pct <= tpct * 1.25) return "#4a9d5a";
+    return "#4a90d9";
+  };
+
+  const rows = [
+    { label: "Card Advantage", match: isCardAdv, target: nPerColor, total: cards.filter(isCardAdv).length },
+    { label: "Removal",        match: isRemoval, target: nPerColor, total: cards.filter(isRemoval).length },
+  ];
+
+  return (
+    <div style={{ ...S.page, maxWidth:"960px" }}>
+      <div style={S.box}>
+        <div style={S.boxTitle}>Core utility — card advantage &amp; removal</div>
+
+        {/* Legend */}
+        <div style={{ display:"flex", gap:"16px", marginBottom:"16px", flexWrap:"wrap" }}>
+          <span style={{ fontSize:"11px", color:"#d94a4a" }}>&#9632; &lt; 50% of target</span>
+          <span style={{ fontSize:"11px", color:"#c8a000" }}>&#9632; 50-100% of target</span>
+          <span style={{ fontSize:"11px", color:"#4a9d5a" }}>&#9632; 100-125% of target</span>
+          <span style={{ fontSize:"11px", color:"#4a90d9" }}>&#9632; &gt; 125% of target</span>
+        </div>
+
+        {/* Header row */}
+        <div style={{ display:"flex", alignItems:"center", borderBottom:"1px solid #333", paddingBottom:"8px", marginBottom:"4px" }}>
+          <div style={{ width:"140px", flexShrink:0 }}></div>
+          <div style={{ width:"80px", textAlign:"center", fontSize:"10px", color:"#aaa", textTransform:"uppercase", letterSpacing:"0.08em", flexShrink:0 }}>Total</div>
+          {cols.map(col => (
+            <div key={col.key} style={{ flex:1, minWidth:"44px", display:"flex", justifyContent:"center" }}>
+              {col.header}
+            </div>
+          ))}
+        </div>
+
+        {/* Data rows */}
+        {rows.map(({ label, match, target, total: rowTotal }) => {
+          const colCounts = cols.map(col => cards.filter(c => match(c) && col.match(c)).length);
+          const totalColor = threshold4(rowTotal, zTotal);
+          return (
+            <div key={label} style={{ display:"flex", alignItems:"center", padding:"10px 0", borderBottom:"1px solid #1a1a1a" }}>
+              <div style={{ width:"140px", fontSize:"12px", color:"#ccc", flexShrink:0 }}>{label}</div>
+              {/* Total X/z */}
+              <div style={{ width:"80px", textAlign:"center", flexShrink:0 }}>
+                <span style={{ fontSize:"14px", fontWeight:"700", color:totalColor }}>{rowTotal}</span>
+                <span style={{ fontSize:"11px", color:"#ccc", marginLeft:"2px" }}>/{zTotal}</span>
+              </div>
+              {/* Per column */}
+              {colCounts.map((cnt, i) => {
+                const col = cols[i];
+                const color = col.hasTarget ? threshold4(cnt, nPerColor) : (cnt > 0 ? "#aaa" : "#333");
+                return (
+                  <div key={col.key} style={{ flex:1, minWidth:"44px", textAlign:"center" }}>
+                    <span style={{ fontSize:"13px", fontWeight:"700", color }}>{cnt || "—"}</span>
+                    {col.hasTarget && cnt > 0 && (
+                      <span style={{ fontSize:"10px", color:"#ccc", marginLeft:"2px" }}>/{nPerColor}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ArchetypesAnalysisWrapper({ cards, db }) {
   const [archTab, setArchTab] = React.useState("main");
   return (
@@ -4635,7 +4754,7 @@ function ArchetypesAnalysisWrapper({ cards, db }) {
       </div>
       {archTab === "main"    && <ArchetypesAnalysisPage cards={cards} db={db} />}
       {archTab === "tribal"  && <TribalAnalysisPage     cards={cards} db={db} />}
-      {archTab === "support" && <div style={S.page}><div style={{ color:"#555", fontSize:"13px" }}>Coming soon.</div></div>}
+      {archTab === "support" && <SupportAnalysisPage cards={cards} db={db} />}
     </div>
   );
 }
