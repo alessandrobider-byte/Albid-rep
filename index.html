@@ -8,7 +8,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; color: #fff; font-family: 'Courier New', monospace; }
     #root { min-height: 100vh; }
-    #loading { display: flex; align-items: center; justify-content: center; min-height: 100vh; color: #555; font-size: 13px; }
+    #loading { display: flex; align-items: center; justify-content: center; min-height: 100vh; color: #555; font-size: 13px; letter-spacing: 0.1em; }
   </style>
 </head>
 <body>
@@ -20,15 +20,32 @@
     fetch('./cube-app.jsx')
       .then(r => r.text())
       .then(src => {
-        const transformed = Babel.transform(src, { presets: ['react'] }).code;
-        // Find any "import" in transformed code
-        const lines = transformed.split('\n');
-        const importLines = [];
-        lines.forEach((l, i) => {
-          if (l.includes('import')) importLines.push((i+1) + ': ' + l.trim().slice(0,120));
-        });
+        let transformed;
+        try {
+          transformed = Babel.transform(src, {
+            presets: ['react'],
+            plugins: [
+              'transform-optional-chaining',
+              'transform-nullish-coalescing-operator',
+              'transform-logical-assignment-operators'
+            ]
+          }).code;
+        } catch(babelErr) {
+          document.getElementById('root').innerHTML =
+            '<div style="padding:40px;color:#d94a4a;font-family:monospace;white-space:pre-wrap">BABEL ERROR:\n' + babelErr.message + '</div>';
+          return;
+        }
+        try {
+          const fn = new Function('React', 'ReactDOM', transformed + '\nReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));');
+          fn(React, ReactDOM);
+        } catch(runtimeErr) {
+          document.getElementById('root').innerHTML =
+            '<div style="padding:40px;color:#d94a4a;font-family:monospace;white-space:pre-wrap">RUNTIME ERROR:\n' + runtimeErr.message + '\n\n' + (runtimeErr.stack||'') + '</div>';
+        }
+      })
+      .catch(err => {
         document.getElementById('root').innerHTML =
-          '<div style="padding:20px;color:#fff;font-family:monospace;font-size:11px;white-space:pre-wrap">IMPORT LINES IN TRANSFORMED CODE:\n' + importLines.join('\n') + '</div>';
+          '<div style="padding:40px;color:#d94a4a;font-family:monospace;white-space:pre-wrap">LOAD ERROR:\n' + err.message + '</div>';
       });
   </script>
 </body>
