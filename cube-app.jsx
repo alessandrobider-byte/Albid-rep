@@ -4489,7 +4489,7 @@ function ArchetypesAnalysisPage({ cards, db }) {
     return { guild:g.name, colors:g.colors, slots: ranked.slice(0, archPerGuild) };
   });
 
-  const cols = Array.from({ length: archPerGuild }, (_, i) => `Main Archetype ${i+1}`);
+  const cols = Array.from({ length: archPerGuild }, (_, i) => "Main Archetype " + (i+1));
 
   return (
     <div style={{ ...S.page, maxWidth:"960px" }}>
@@ -4702,7 +4702,7 @@ function TribalAnalysisPage({ cards, db }) {
     return { guild:g.name, colors:g.colors, slots: ranked.slice(0, archPerGuild) };
   });
 
-  const cols = Array.from({ length: archPerGuild }, (_, i) => `Tribal Archetype ${i+1}`);
+  const cols = Array.from({ length: archPerGuild }, (_, i) => "Tribal Archetype " + (i+1));
 
   return (
     <div style={{ ...S.page, maxWidth:"960px" }}>
