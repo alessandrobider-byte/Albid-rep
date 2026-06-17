@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MTG Cube Manager</title>
-  <!-- TEST -->
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; color: #fff; font-family: 'Courier New', monospace; }
@@ -24,14 +23,12 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script>
+    // Load cube-app.jsx and transform it with Babel
     fetch('./cube-app.jsx')
       .then(r => r.text())
       .then(src => {
         const transformed = Babel.transform(src, {
-          presets: [
-            ['env', { targets: { esmodules: true } }],
-            'react'
-          ],
+          presets: ['react'],
           plugins: []
         }).code;
         const fn = new Function('React', 'ReactDOM', transformed + '\nReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));');
