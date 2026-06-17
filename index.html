@@ -23,12 +23,14 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script>
-    // Load cube-app.jsx and transform it with Babel
     fetch('./cube-app.jsx')
       .then(r => r.text())
       .then(src => {
         const transformed = Babel.transform(src, {
-          presets: ['react'],
+          presets: [
+            ['env', { targets: { esmodules: true } }],
+            'react'
+          ],
           plugins: []
         }).code;
         const fn = new Function('React', 'ReactDOM', transformed + '\nReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));');
