@@ -4489,7 +4489,7 @@ function ArchetypesAnalysisPage({ cards, db }) {
     return { guild:g.name, colors:g.colors, slots: ranked.slice(0, archPerGuild) };
   });
 
-  const cols = Array.from({ length: archPerGuild }, (_, i) => "Main Archetype " + (i+1));
+  const cols = Array.from({ length: archPerGuild }, (_, i) => `Main Archetype ${i+1}`);
 
   return (
     <div style={{ ...S.page, maxWidth:"960px" }}>
@@ -4644,30 +4644,10 @@ function TribalAnalysisPage({ cards, db }) {
   const total        = cards.length || 1;
   const archPerGuild = TRIBAL_PER_COLOR[db.size] || 1;
 
-  const TRIBAL_ACTIVE_PCT  = 0.03; // 3% — ~11 cards on 360
-  const TRIBAL_SUPPORT_PCT = 0.02; // 2% — ~7 cards on 360
+  const TRIBAL_ACTIVE_PCT  = 0.03;
+  const TRIBAL_SUPPORT_PCT = 0.02;
   const targetActive  = Math.round(total * TRIBAL_ACTIVE_PCT);
   const targetSupport = Math.round(total * TRIBAL_SUPPORT_PCT);
-
-  const allData = PREDEFINED_TRIBAL_ARCHETYPES.map(a => {
-    const nameLC     = a.name.toLowerCase();
-    const activeCards  = cards.filter(c => (c.tags?.tribal_archetype||[]).some(t => t.toLowerCase()===nameLC));
-    const supportCards = cards.filter(c => (c.tags?.tribal_archetype_support||[]).some(t => t.toLowerCase()===nameLC));
-    const guildData  = GUILDS_LIST.map(g => ({
-      guild:   g.name,
-      active:  activeCards.filter(c => c.tags?.guild === g.name).length,
-      support: supportCards.filter(c => c.tags?.guild === g.name).length,
-    }));
-    const colorData  = COLOR_KEYS.map(k => ({
-      key:    k,
-      active: activeCards.filter(c => (c.colors||[]).includes(k)).length,
-    }));
-    return { name:a.name, activeCount:activeCards.length, supportCount:supportCards.length, guildData, colorData };
-  }).filter(a => a.activeCount + a.supportCount > 0)
-    .sort((a,b) => b.activeCount - a.activeCount || b.supportCount - a.supportCount);
-
-  const maxDot = Math.max(1, ...allData.flatMap(a => a.colorData.map(c => c.active)));
-  const DOT_MAX = 12;
 
   const threshold4 = (n, target) => {
     if (target === 0) return "#4a9d5a";
@@ -4679,6 +4659,25 @@ function TribalAnalysisPage({ cards, db }) {
     if (pct <= tpct * 1.25) return "#4a9d5a";
     return "#4a90d9";
   };
+
+  const allData = PREDEFINED_TRIBAL_ARCHETYPES.map(a => {
+    const nameLC     = a.name.toLowerCase();
+    const activeCards  = cards.filter(c => (c.tags?.tribal_archetype||[]).some(t => t.toLowerCase()===nameLC));
+    const supportCards = cards.filter(c => (c.tags?.tribal_archetype_support||[]).some(t => t.toLowerCase()===nameLC));
+    const guildData  = GUILDS_LIST.map(g => ({
+      guild:   g.name,
+      active:  activeCards.filter(c => c.tags?.guild === g.name).length,
+    }));
+    const colorData  = COLOR_KEYS.map(k => ({
+      key:    k,
+      active: activeCards.filter(c => (c.colors||[]).includes(k)).length,
+    }));
+    return { name:a.name, activeCount:activeCards.length, supportCount:supportCards.length, guildData, colorData };
+  }).filter(a => a.activeCount + a.supportCount > 0)
+    .sort((a,b) => b.activeCount - a.activeCount || b.supportCount - a.supportCount);
+
+  const maxDot = Math.max(1, ...allData.flatMap(a => a.colorData.map(c => c.active)));
+  const DOT_MAX = 12;
 
   const CountCell = ({ count, target }) => {
     const color = threshold4(count, target);
@@ -4695,14 +4694,14 @@ function TribalAnalysisPage({ cards, db }) {
     const ranked = allData
       .map(a => {
         const gd = a.guildData.find(x => x.guild === g.name);
-        return { name:a.name, guildActive: gd?.active||0 };
+        return { name:a.name, guildActive: gd ? gd.active : 0 };
       })
       .filter(a => a.guildActive > 0)
       .sort((a,b) => b.guildActive - a.guildActive);
     return { guild:g.name, colors:g.colors, slots: ranked.slice(0, archPerGuild) };
   });
 
-  const cols = Array.from({ length: archPerGuild }, (_, i) => "Tribal Archetype " + (i+1));
+  const cols = Array.from({ length: archPerGuild }, (_, i) => "Tribal Archetype " + (i + 1));
 
   return (
     <div style={{ ...S.page, maxWidth:"960px" }}>
@@ -4736,8 +4735,8 @@ function TribalAnalysisPage({ cards, db }) {
                       </td>
                     );
                     const archData    = allData.find(a => a.name === slot.name);
-                    const cubeActive  = archData?.activeCount  || 0;
-                    const cubeSupport = archData?.supportCount || 0;
+                    const cubeActive  = archData ? archData.activeCount  : 0;
+                    const cubeSupport = archData ? archData.supportCount : 0;
                     return (
                       <td key={i} style={{ ...S.td(), padding:"10px 12px", verticalAlign:"top" }}>
                         <div style={{ fontSize:"12px", color:"#fff", fontWeight:"600", marginBottom:"6px" }}>{slot.name}</div>
@@ -4767,10 +4766,10 @@ function TribalAnalysisPage({ cards, db }) {
       <div style={S.box}>
         <div style={S.boxTitle}>All tribal archetypes</div>
         <div style={{ display:"flex", gap:"16px", marginBottom:"16px", flexWrap:"wrap" }}>
-          <span style={{ fontSize:"11px", color:"#d94a4a" }}>■ &lt; 50% of target</span>
-          <span style={{ fontSize:"11px", color:"#c8a000" }}>■ 50–100% of target</span>
-          <span style={{ fontSize:"11px", color:"#4a9d5a" }}>■ 100–125% of target</span>
-          <span style={{ fontSize:"11px", color:"#4a90d9" }}>■ &gt; 125% of target</span>
+          <span style={{ fontSize:"11px", color:"#d94a4a" }}>&#9632; &lt; 50% of target</span>
+          <span style={{ fontSize:"11px", color:"#c8a000" }}>&#9632; 50-100% of target</span>
+          <span style={{ fontSize:"11px", color:"#4a9d5a" }}>&#9632; 100-125% of target</span>
+          <span style={{ fontSize:"11px", color:"#4a90d9" }}>&#9632; &gt; 125% of target</span>
         </div>
         {allData.length === 0 ? (
           <div style={{ color:"#555", fontSize:"13px" }}>No tribal archetypes with tagged cards found.</div>
@@ -4804,10 +4803,10 @@ function TribalAnalysisPage({ cards, db }) {
                       const cellSize = DOT_MAX * 2 + 8;
                       return (
                         <td key={col.key} style={{ ...S.td(), textAlign:"center", padding:"2px", verticalAlign:"middle" }}>
-                          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:`${cellSize}px` }}
-                            title={col.active > 0 ? `${COLOR_NAMES[col.key]}: ${col.active}` : ""}>
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:String(cellSize) + "px" }}
+                            title={col.active > 0 ? (COLOR_NAMES[col.key] + ": " + col.active) : ""}>
                             {col.active > 0 && (
-                              <svg width={cellSize} height={cellSize} viewBox={`0 0 ${cellSize} ${cellSize}`} style={{ display:"block" }}>
+                              <svg width={cellSize} height={cellSize} viewBox={"0 0 " + cellSize + " " + cellSize} style={{ display:"block" }}>
                                 <circle cx={cellSize/2} cy={cellSize/2} r={r} fill={COLOR_HEX[col.key] || "#fff"} opacity="0.85" />
                               </svg>
                             )}
@@ -4825,6 +4824,7 @@ function TribalAnalysisPage({ cards, db }) {
     </div>
   );
 }
+
 
 function ArchetypesPage({ cards, db, tagDB }) {
   const guilds = GUILDS_LIST.map(g => g.name);
